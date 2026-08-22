@@ -18,6 +18,7 @@ export default function CameraScreen() {
   const [permission, requestPermission] = useCameraPermissions();
 
   const [photo, setPhoto] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -113,6 +114,51 @@ export default function CameraScreen() {
     }
   };
 
+  const uploadPhoto = async () => {
+    if (!photo || uploading) {
+      return;
+    }
+
+    try {
+      setUploading(true);
+
+      const formData = new FormData();
+
+      formData.append("image", {
+        uri: photo,
+        name: "snapfilter-photo.jpg",
+        type: "image/jpeg",
+      } as any);
+
+      formData.append("username", "testuser");
+      formData.append("caption", "My SnapFilter photo");
+
+      const response = await fetch(
+        "http://192.168.1.209:5000/api/photos/upload",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert("Photo uploaded successfully ☁️");
+        console.log("Uploaded photo:", data);
+      } else {
+        alert(data.message || "Upload failed");
+      }
+    } catch (error) {
+      console.log("Upload error:", error);
+      alert(`Upload error: ${error}`);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+
+
   // =========================
   // PHOTO PREVIEW
   // =========================
@@ -129,6 +175,14 @@ export default function CameraScreen() {
           <Button
             title="📷 Retake"
             onPress={() => setPhoto(null)}
+          />
+
+          <View style={{ height: 15 }} />
+
+          <Button
+            title={uploading ? "⏳ Uploading..." : "☁️ Upload Photo"}
+            onPress={uploadPhoto}
+            disabled={uploading}
           />
         </View>
       </View>
@@ -222,16 +276,16 @@ export default function CameraScreen() {
       )}
 
       {filter === "text" && (
-  <View style={styles.textFilterContainer}>
-    <TextInput
-      style={styles.textInput}
-      placeholder="Type something..."
-      placeholderTextColor="white"
-      value={text}
-      onChangeText={setText}
-    />
-  </View>
-)}
+        <View style={styles.textFilterContainer}>
+          <TextInput
+            style={styles.textInput}
+            placeholder="Type something..."
+            placeholderTextColor="white"
+            value={text}
+            onChangeText={setText}
+          />
+        </View>
+      )}
 
       {/* =========================
           FILTER BAR
@@ -512,28 +566,28 @@ const styles = StyleSheet.create({
   },
 
   textFilterContainer: {
-  position: "absolute",
-  bottom: 190,
-  left: 20,
-  right: 20,
-  alignItems: "center",
-},
+    position: "absolute",
+    bottom: 190,
+    left: 20,
+    right: 20,
+    alignItems: "center",
+  },
 
-textInput: {
-  color: "white",
-  fontSize: 28,
-  fontWeight: "bold",
-  textAlign: "center",
-  minWidth: 200,
-  padding: 10,
-},
+  textInput: {
+    color: "white",
+    fontSize: 28,
+    fontWeight: "bold",
+    textAlign: "center",
+    minWidth: 200,
+    padding: 10,
+  },
 
-textOverlay: {
-  marginTop: 15,
-  color: "white",
-  fontSize: 28,
-  fontWeight: "bold",
-  textAlign: "center",
-},
+  textOverlay: {
+    marginTop: 15,
+    color: "white",
+    fontSize: 28,
+    fontWeight: "bold",
+    textAlign: "center",
+  },
 
 });
