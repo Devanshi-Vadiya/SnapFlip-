@@ -2,7 +2,7 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import * as Location from "expo-location";
 import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-
+import { API_URL } from "./api";
 import {
   Button,
   Image,
@@ -158,7 +158,7 @@ export default function CameraScreen() {
       formData.append("caption", "My SnapFilter photo");
 
       const response = await fetch(
-        "http://192.168.1.209:5000/api/photos/upload",
+        `${API_URL}/api/photos/upload`,
         {
           method: "POST",
           body: formData,
