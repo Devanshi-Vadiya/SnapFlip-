@@ -6,12 +6,13 @@ import { useEffect, useRef, useState } from "react";
 import {
   Button,
   Image,
+  PanResponder,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
-  TextInput,
 } from "react-native";
 
 export default function CameraScreen() {
@@ -29,6 +30,25 @@ export default function CameraScreen() {
   const [text, setText] = useState("");
 
   const cameraRef = useRef<CameraView>(null);
+
+  // =========================
+  // SWIPE NAVIGATION
+  // =========================
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return Math.abs(gestureState.dx) > Math.abs(gestureState.dy);
+      },
+
+      onPanResponderRelease: (_, gestureState) => {
+        // Swipe LEFT → Feed
+        if (gestureState.dx < -80) {
+          router.push("/feed");
+        }
+      },
+    })
+  ).current;
 
   // =========================
   // CLOCK
@@ -114,6 +134,10 @@ export default function CameraScreen() {
     }
   };
 
+  // =========================
+  // UPLOAD PHOTO
+  // =========================
+
   const uploadPhoto = async () => {
     if (!photo || uploading) {
       return;
@@ -157,8 +181,6 @@ export default function CameraScreen() {
     }
   };
 
-
-
   // =========================
   // PHOTO PREVIEW
   // =========================
@@ -166,24 +188,33 @@ export default function CameraScreen() {
   if (photo) {
     return (
       <View style={styles.container}>
+
+        {/* CAPTURED PHOTO */}
         <Image
           source={{ uri: photo }}
           style={styles.preview}
         />
 
+        {/* RETAKE + UPLOAD */}
         <View style={styles.retakeButton}>
+
           <Button
             title="📷 Retake"
             onPress={() => setPhoto(null)}
           />
 
-          <View style={{ height: 15 }} />
+          <View style={styles.buttonSpacing} />
 
           <Button
-            title={uploading ? "⏳ Uploading..." : "☁️ Upload Photo"}
+            title={
+              uploading
+                ? "⏳ Uploading..."
+                : "☁️ Upload Photo"
+            }
             onPress={uploadPhoto}
             disabled={uploading}
           />
+
         </View>
       </View>
     );
@@ -194,22 +225,18 @@ export default function CameraScreen() {
   // =========================
 
   return (
-    <View style={styles.container}>
+    <View
+      style={styles.container}
+      {...panResponder.panHandlers}
+    >
 
-      {/* LOGOUT BUTTON */}
-
-      <TouchableOpacity
-        style={styles.logoutButton}
-        onPress={() => router.replace("/login")}
-      >
-        <Text style={styles.logoutText}>Logout</Text>
-      </TouchableOpacity>
-
-      {/* CAMERA */}
+      {/* =========================
+          CAMERA
+          ========================= */}
 
       <CameraView
         ref={cameraRef}
-        style={styles.camera}
+        style={StyleSheet.absoluteFillObject}
         facing="back"
       />
 
@@ -245,7 +272,9 @@ export default function CameraScreen() {
         />
       )}
 
-      {/* TIME FILTER */}
+      {/* =========================
+          TIME FILTER
+          ========================= */}
 
       {filter === "time" && (
         <View
@@ -262,7 +291,9 @@ export default function CameraScreen() {
         </View>
       )}
 
-      {/* LOCATION FILTER */}
+      {/* =========================
+          LOCATION FILTER
+          ========================= */}
 
       {filter === "location" && location && (
         <View
@@ -274,6 +305,10 @@ export default function CameraScreen() {
           </Text>
         </View>
       )}
+
+      {/* =========================
+          TEXT FILTER
+          ========================= */}
 
       {filter === "text" && (
         <View style={styles.textFilterContainer}>
@@ -288,98 +323,157 @@ export default function CameraScreen() {
       )}
 
       {/* =========================
-          FILTER BAR
+          LOGOUT
           ========================= */}
 
-      <View style={styles.filtersContainer}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filters}
-        >
-
-          <TouchableOpacity
-            onPress={() => setFilter("normal")}
-          >
-            <Text style={styles.filterText}>
-              Normal
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => setFilter("warm")}
-          >
-            <Text style={styles.filterText}>
-              Warm
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => setFilter("cool")}
-          >
-            <Text style={styles.filterText}>
-              Cool
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => setFilter("bw")}
-          >
-            <Text style={styles.filterText}>
-              B&W
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => setFilter("vintage")}
-          >
-            <Text style={styles.filterText}>
-              Vintage
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => setFilter("time")}
-          >
-            <Text style={styles.filterText}>
-              Time
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => {
-              setFilter("location");
-              getLocation();
-            }}
-          >
-
-            <Text style={styles.filterText}>
-              Location
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => setFilter("text")}
-          >
-            <Text style={styles.filterText}>
-              Text
-            </Text>
-          </TouchableOpacity>
-
-        </ScrollView>
-      </View>
+      <TouchableOpacity
+        style={styles.logoutButton}
+        onPress={() => router.replace("/login")}
+        activeOpacity={0.8}
+      >
+        <Text style={styles.logoutText}>
+          Logout
+        </Text>
+      </TouchableOpacity>
 
       {/* =========================
-          CAMERA BUTTON
+          BOTTOM CONTROLS
           ========================= */}
 
-      <View style={styles.captureButton}>
-        <Button
-          title="📷 TAKE PICTURE"
-          onPress={takePicture}
-        />
-      </View>
+      <View style={styles.bottomControls}>
 
+        {/* FILTER PANEL */}
+
+        <View style={styles.filtersContainer}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filters}
+          >
+
+            <TouchableOpacity
+              style={[
+                styles.filterItem,
+                filter === "normal" && styles.activeFilter,
+              ]}
+              onPress={() => setFilter("normal")}
+            >
+              <Text style={styles.filterText}>
+                Normal
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.filterItem,
+                filter === "warm" && styles.activeFilter,
+              ]}
+              onPress={() => setFilter("warm")}
+            >
+              <Text style={styles.filterText}>
+                Warm
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.filterItem,
+                filter === "cool" && styles.activeFilter,
+              ]}
+              onPress={() => setFilter("cool")}
+            >
+              <Text style={styles.filterText}>
+                Cool
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.filterItem,
+                filter === "bw" && styles.activeFilter,
+              ]}
+              onPress={() => setFilter("bw")}
+            >
+              <Text style={styles.filterText}>
+                B&W
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.filterItem,
+                filter === "vintage" && styles.activeFilter,
+              ]}
+              onPress={() => setFilter("vintage")}
+            >
+              <Text style={styles.filterText}>
+                Vintage
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.filterItem,
+                filter === "time" && styles.activeFilter,
+              ]}
+              onPress={() => setFilter("time")}
+            >
+              <Text style={styles.filterText}>
+                Time
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.filterItem,
+                filter === "location" && styles.activeFilter,
+              ]}
+              onPress={() => {
+                setFilter("location");
+                getLocation();
+              }}
+            >
+              <Text style={styles.filterText}>
+                Location
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.filterItem,
+                filter === "text" && styles.activeFilter,
+              ]}
+              onPress={() => setFilter("text")}
+            >
+              <Text style={styles.filterText}>
+                Text
+              </Text>
+            </TouchableOpacity>
+
+          </ScrollView>
+        </View>
+
+        {/* SWIPE HINT */}
+
+        <Text style={styles.swipeHint}>
+          Swipe left for Feed →
+        </Text>
+
+        {/* CAMERA BUTTON */}
+
+        <TouchableOpacity
+          style={styles.cameraButton}
+          onPress={takePicture}
+          activeOpacity={0.7}
+        >
+          <View style={styles.cameraButtonInner}>
+            <Text style={styles.cameraIcon}>
+              📷
+            </Text>
+          </View>
+        </TouchableOpacity>
+
+      </View>
     </View>
   );
 }
@@ -390,9 +484,13 @@ export default function CameraScreen() {
 
 const styles = StyleSheet.create({
 
+  // =========================
+  // MAIN
+  // =========================
+
   container: {
     flex: 1,
-    backgroundColor: "black",
+    backgroundColor: "#000",
   },
 
   camera: {
@@ -405,149 +503,291 @@ const styles = StyleSheet.create({
   },
 
   // =========================
-  // FILTERS
+  // LOGOUT
   // =========================
 
-  warmFilter: {
+  logoutButton: {
     position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(255, 180, 80, 0.25)",
-  },
+    top: 48,
+    right: 16,
 
-  coolFilter: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(80, 150, 255, 0.20)",
-  },
+    zIndex: 20,
 
-  bwFilter: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.45)",
-  },
+    backgroundColor: "rgba(0, 0, 0, 0.55)",
 
-  vintageFilter: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(180, 120, 60, 0.25)",
-  },
-
-  // =========================
-  // TIME
-  // =========================
-
-  timeFilter: {
-    position: "absolute",
-    bottom: 190,
-    alignSelf: "center",
-    alignItems: "center",
-  },
-
-  timeText: {
-    color: "white",
-    fontSize: 32,
-    fontWeight: "bold",
-  },
-
-  dateText: {
-    color: "white",
-    fontSize: 18,
-  },
-
-  // =========================
-  // LOCATION
-  // =========================
-
-  locationFilter: {
-    position: "absolute",
-    bottom: 190,
-    alignSelf: "center",
-    backgroundColor: "rgba(0,0,0,0.45)",
     paddingVertical: 8,
-    paddingHorizontal: 15,
+    paddingHorizontal: 16,
+
     borderRadius: 20,
+
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.35)",
   },
 
-  locationText: {
-    color: "white",
-    fontSize: 20,
-    fontWeight: "bold",
+  logoutText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "700",
   },
 
   // =========================
-  // FILTER BAR
+  // BOTTOM CONTROLS
+  // =========================
+
+  bottomControls: {
+    position: "absolute",
+
+    left: 0,
+    right: 0,
+    bottom: 20,
+
+    alignItems: "center",
+
+    paddingHorizontal: 14,
+  },
+
+  // =========================
+  // FILTER CONTAINER
   // =========================
 
   filtersContainer: {
-    position: "absolute",
-    bottom: 100,
-    left: 0,
-    right: 0,
+    width: "100%",
+
+    backgroundColor: "rgba(0, 0, 0, 0.55)",
+
+    borderRadius: 24,
+
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.25)",
+
+    paddingVertical: 8,
+
+    marginBottom: 12,
+
+    overflow: "hidden",
   },
 
   filters: {
-    paddingHorizontal: 20,
-    gap: 30,
+    paddingHorizontal: 10,
+
     alignItems: "center",
+
+    gap: 8,
+  },
+
+  filterItem: {
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+
+    borderRadius: 18,
+  },
+
+  activeFilter: {
+    backgroundColor: "rgba(255, 255, 255, 0.20)",
+
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.6)",
   },
 
   filterText: {
-    color: "white",
-    fontSize: 18,
-    fontWeight: "bold",
+    color: "#fff",
+
+    fontSize: 15,
+
+    fontWeight: "700",
+  },
+
+  // =========================
+  // SWIPE HINT
+  // =========================
+
+  swipeHint: {
+    color: "#fff",
+
+    fontSize: 14,
+
+    fontWeight: "600",
+
+    marginBottom: 10,
+
+    opacity: 0.85,
+
+    textAlign: "center",
   },
 
   // =========================
   // CAMERA BUTTON
   // =========================
 
-  captureButton: {
-    position: "absolute",
-    bottom: 40,
-    alignSelf: "center",
+  cameraButton: {
+    width: 82,
+    height: 82,
+
+    borderRadius: 41,
+
+    borderWidth: 3,
+    borderColor: "#fff",
+
+    backgroundColor: "rgba(255, 255, 255, 0.16)",
+
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  cameraButtonInner: {
+    width: 68,
+    height: 68,
+
+    borderRadius: 34,
+
+    backgroundColor: "rgba(255, 255, 255, 0.32)",
+
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  cameraIcon: {
+    fontSize: 30,
   },
 
   // =========================
-  // LOGOUT
+  // FILTER OVERLAYS
   // =========================
 
-  logoutButton: {
+  warmFilter: {
+    ...StyleSheet.absoluteFillObject,
+
+    backgroundColor:
+      "rgba(255, 180, 80, 0.25)",
+  },
+
+  coolFilter: {
+    ...StyleSheet.absoluteFillObject,
+
+    backgroundColor:
+      "rgba(80, 150, 255, 0.20)",
+  },
+
+  bwFilter: {
+    ...StyleSheet.absoluteFillObject,
+
+    backgroundColor:
+      "rgba(0, 0, 0, 0.45)",
+  },
+
+  vintageFilter: {
+    ...StyleSheet.absoluteFillObject,
+
+    backgroundColor:
+      "rgba(180, 120, 60, 0.25)",
+  },
+
+  // =========================
+  // TIME FILTER
+  // =========================
+
+  timeFilter: {
     position: "absolute",
-    top: 50,
-    right: 20,
-    zIndex: 10,
-    backgroundColor: "rgba(0,0,0,0.6)",
+
+    bottom: 220,
+
+    alignSelf: "center",
+
+    alignItems: "center",
+
+    zIndex: 5,
+  },
+
+  timeText: {
+    color: "#fff",
+
+    fontSize: 32,
+
+    fontWeight: "bold",
+  },
+
+  dateText: {
+    color: "#fff",
+
+    fontSize: 18,
+  },
+
+  // =========================
+  // LOCATION FILTER
+  // =========================
+
+  locationFilter: {
+    position: "absolute",
+
+    bottom: 220,
+
+    alignSelf: "center",
+
+    backgroundColor: "rgba(0, 0, 0, 0.45)",
+
     paddingVertical: 8,
     paddingHorizontal: 15,
+
     borderRadius: 20,
+
+    zIndex: 5,
   },
 
-  logoutText: {
-    color: "white",
-    fontSize: 15,
+  locationText: {
+    color: "#fff",
+
+    fontSize: 20,
+
     fontWeight: "bold",
   },
 
   // =========================
-  // RETAKE
+  // TEXT FILTER
+  // =========================
+
+  textFilterContainer: {
+    position: "absolute",
+
+    bottom: 220,
+
+    left: 20,
+    right: 20,
+
+    alignItems: "center",
+
+    zIndex: 5,
+  },
+
+  textInput: {
+    color: "#fff",
+
+    fontSize: 28,
+
+    fontWeight: "bold",
+
+    textAlign: "center",
+
+    minWidth: 200,
+
+    padding: 10,
+  },
+
+  // =========================
+  // RETAKE / UPLOAD
   // =========================
 
   retakeButton: {
     position: "absolute",
+
     bottom: 40,
+
     alignSelf: "center",
+
+    alignItems: "center",
+  },
+
+  buttonSpacing: {
+    height: 15,
   },
 
   // =========================
@@ -556,38 +796,15 @@ const styles = StyleSheet.create({
 
   permissionContainer: {
     flex: 1,
+
     justifyContent: "center",
+
     alignItems: "center",
+
     gap: 20,
   },
 
   permissionText: {
     fontSize: 18,
   },
-
-  textFilterContainer: {
-    position: "absolute",
-    bottom: 190,
-    left: 20,
-    right: 20,
-    alignItems: "center",
-  },
-
-  textInput: {
-    color: "white",
-    fontSize: 28,
-    fontWeight: "bold",
-    textAlign: "center",
-    minWidth: 200,
-    padding: 10,
-  },
-
-  textOverlay: {
-    marginTop: 15,
-    color: "white",
-    fontSize: 28,
-    fontWeight: "bold",
-    textAlign: "center",
-  },
-
 });
