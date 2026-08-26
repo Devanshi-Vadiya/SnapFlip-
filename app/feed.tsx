@@ -65,6 +65,8 @@ export default function FeedScreen() {
 
       const data = await response.json();
 
+      console.log("PHOTOS FROM API:", data);
+      console.log("IMAGE URL:", data[0]?.imageUrl);
       if (!response.ok) {
         throw new Error(
           data.message || "Failed to load feed"
@@ -231,9 +233,22 @@ export default function FeedScreen() {
           }
         >
           <Image
-            source={{ uri: item.image }}
-            style={styles.postImage}
-          />
+  source={{ uri: item.image }}
+  style={styles.postImage}
+  resizeMode="cover"
+  onError={(error) => {
+    console.log(
+      "IMAGE LOAD ERROR:",
+      error.nativeEvent.error
+    );
+  }}
+  onLoad={() => {
+    console.log(
+      "IMAGE LOADED:",
+      item.image
+    );
+  }}
+/>
 
           {/* DOUBLE TAP HEART */}
 
@@ -557,9 +572,10 @@ const styles = StyleSheet.create({
   // =========================
 
   postImage: {
-    width: "100%",
-    height: 420,
-  },
+  width: "100%",
+  height: 420,
+  backgroundColor: "#ddd",
+},
 
   // =========================
   // HEART OVERLAY
