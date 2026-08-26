@@ -10,6 +10,23 @@ const upload = multer({
   storage: multer.memoryStorage(),
 });
 
+// =========================
+// GET ALL PHOTOS
+// =========================
+
+router.get("/", async (req, res) => {
+  try {
+    const photos = await Photo.find().sort({ _id: -1 });
+
+    res.status(200).json(photos);
+  } catch (error) {
+    console.log("Fetch photos error:", error);
+
+    res.status(500).json({
+      message: "Failed to fetch photos",
+    });
+  }
+});
 // Upload photo
 router.post("/upload", upload.single("image"), async (req, res) => {
   try {
