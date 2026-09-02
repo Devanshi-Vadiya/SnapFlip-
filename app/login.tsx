@@ -8,6 +8,7 @@ import {
 } from "react-native";
 import { router } from "expo-router";
 import { API_URL } from "./api";
+import * as SecureStore from "expo-secure-store";
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
@@ -31,9 +32,11 @@ export default function LoginScreen() {
     console.log(data);
 
     if (response.ok) {
+  await SecureStore.setItemAsync("token", data.token);
+
   alert("Login successful!");
   router.replace("/camera");
-} else {
+}else {
       alert(data.message);
     }
   } catch (error) {

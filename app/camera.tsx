@@ -14,6 +14,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import * as SecureStore from "expo-secure-store";
+
 
 export default function CameraScreen() {
   const [permission, requestPermission] = useCameraPermissions();
@@ -157,13 +159,15 @@ export default function CameraScreen() {
       formData.append("username", "testuser");
       formData.append("caption", "My SnapFilter photo");
 
-      const response = await fetch(
-        `${API_URL}/api/photos/upload`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
+      const token = await SecureStore.getItemAsync("token");
+
+      const response = await fetch(`${API_URL}/api/photos/upload`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
 
       const data = await response.json();
 

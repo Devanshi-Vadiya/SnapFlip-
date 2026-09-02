@@ -2,6 +2,7 @@ const express = require("express");
 const multer = require("multer");
 const cloudinary = require("cloudinary").v2;
 const Photo = require("../models/Photo");
+const authMiddleware = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
@@ -28,15 +29,20 @@ router.get("/", async (req, res) => {
   }
 });
 // Upload photo
-router.post("/upload", upload.single("image"), async (req, res) => {
+router.post(
+  "/upload",
+  authMiddleware,
+  upload.single("image"),
+  async (req, res) => {
   try {
-    const { username, caption } = req.body;
+    const { caption } = req.body;
+const username = req.user.username;
 
-    if (!req.file || !username) {
-      return res.status(400).json({
-        message: "Image and username are required",
-      });
-    }
+if (!req.file) {
+  return res.status(400).json({
+    message: "Image is required",
+  });
+}
 
     // Upload image to Cloudinary
     const result = await new Promise((resolve, reject) => {
