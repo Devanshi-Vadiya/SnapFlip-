@@ -51,6 +51,20 @@ if (filter === "bw") {
   transformation = [{ effect: "grayscale" }];
 } else if (filter === "vintage") {
   transformation = [{ effect: "sepia" }];
+} else if (filter === "warm") {
+  transformation = [
+    {
+      effect: "colorize:20",
+      color: "orange",
+    },
+  ];
+} else if (filter === "cool") {
+  transformation = [
+    {
+      effect: "colorize:20",
+      color: "blue",
+    },
+  ];
 }
 
 const result = await new Promise((resolve, reject) => {
