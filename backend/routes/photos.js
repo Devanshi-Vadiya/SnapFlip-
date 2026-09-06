@@ -35,7 +35,7 @@ router.post(
   upload.single("image"),
   async (req, res) => {
   try {
-    const { caption } = req.body;
+    const { caption,filter } = req.body;
 const username = req.user.username;
 
 if (!req.file) {
@@ -45,22 +45,31 @@ if (!req.file) {
 }
 
     // Upload image to Cloudinary
-    const result = await new Promise((resolve, reject) => {
-      const stream = cloudinary.uploader.upload_stream(
-        {
-          folder: "snapfilter",
-        },
-        (error, result) => {
-          if (error) {
-            reject(error);
-          } else {
-            resolve(result);
-          }
-        }
-      );
+    let transformation = [];
 
-      stream.end(req.file.buffer);
-    });
+if (filter === "bw") {
+  transformation = [{ effect: "grayscale" }];
+} else if (filter === "vintage") {
+  transformation = [{ effect: "sepia" }];
+}
+
+const result = await new Promise((resolve, reject) => {
+  const stream = cloudinary.uploader.upload_stream(
+    {
+      folder: "snapfilter",
+      transformation: transformation,
+    },
+    (error, result) => {
+      if (error) {
+        reject(error);
+      } else {
+        resolve(result);
+      }
+    }
+  );
+
+  stream.end(req.file.buffer);
+});
 
     // Save Cloudinary URL in MongoDB
     const photo = await Photo.create({
