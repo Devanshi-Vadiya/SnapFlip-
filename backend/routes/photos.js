@@ -27,6 +27,29 @@ router.get("/", async (req, res) => {
       message: "Failed to fetch photos",
     });
   }
+});router.post("/:id/like", async (req, res) => {
+  try {
+    const photo = await Photo.findById(req.params.id);
+
+    if (!photo) {
+      return res.status(404).json({
+        message: "Photo not found",
+      });
+    }
+
+    photo.likes = (photo.likes || 0) + 1;
+    await photo.save();
+
+    res.status(200).json({
+      message: "Photo liked",
+      likes: photo.likes,
+    });
+  } catch (error) {
+    console.log("Like error:", error);
+    res.status(500).json({
+      message: "Failed to like photo",
+    });
+  }
 });
 // Upload photo
 router.post(
