@@ -16,6 +16,10 @@ const photoSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    likes: {
+      type: Number,
+      default: 0,
+    },
   },
   {
     timestamps: true,

@@ -132,22 +132,33 @@ export default function FeedScreen() {
   // LIKE POST
   // =========================
 
-  const likePost = (postId: string) => {
-    if (likedPosts.includes(postId)) {
-      return;
+  const likePost = async (postId: string) => {
+  if (likedPosts.includes(postId)) return;
+
+  try {
+    const response = await fetch(
+      `${API_URL}/api/photos/${postId}/like`,
+      {
+        method: "POST",
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to like photo");
     }
 
-    setLikedPosts((prev) => [
-      ...prev,
-      postId,
-    ]);
+    setLikedPosts((prev) => [...prev, postId]);
 
     setLikeCounts((prev) => ({
       ...prev,
-      [postId]:
-        (prev[postId] || 0) + 1,
+      [postId]: data.likes,
     }));
-  };
+  } catch (error) {
+    console.log("Like error:", error);
+  }
+};
 
   // =========================
   // DOUBLE TAP
