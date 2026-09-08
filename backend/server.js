@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 require("dotenv").config();
 const cloudinary = require("cloudinary").v2;
 
+
 const app = express();
 const authRoutes = require("./routes/auth");
 const photoRoutes = require("./routes/photos");

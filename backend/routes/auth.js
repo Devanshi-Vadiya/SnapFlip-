@@ -97,7 +97,7 @@ res.status(200).json({
   },
 });
   } catch (error) {
-  console.log("LOGIN ERROR:", error);
+ 
 
   res.status(500).json({
     message: "Server error",
