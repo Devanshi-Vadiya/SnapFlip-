@@ -14,6 +14,7 @@ import {
 import { useLocalSearchParams, router } from "expo-router";
 import { API_URL } from "../api/api";
 import { getAuthToken } from "../api/authStorage";
+import BottomNavBar from "../components/BottomNavBar";
 
 type Conversation = {
   userId: string;
@@ -291,6 +292,7 @@ export default function ChatScreen() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+      <BottomNavBar activeRoute="chat" />
     </View>
   );
 }

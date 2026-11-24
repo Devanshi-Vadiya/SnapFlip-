@@ -26,6 +26,7 @@ import { API_URL } from "../api/api";
 import { getAuthToken, getStoredUser, AuthUser } from "../api/authStorage";
 import StoryTray, { UserStoryGroup } from "../components/StoryTray";
 import StoryViewer from "../components/StoryViewer";
+import BottomNavBar from "../components/BottomNavBar";
 
 type Post = {
   id: string;
@@ -725,6 +726,7 @@ export default function FeedScreen() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+      <BottomNavBar activeRoute="feed" />
     </View>
   );
 }

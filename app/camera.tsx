@@ -19,6 +19,7 @@ import {
 
 import * as SecureStore from "expo-secure-store";
 import { clearAuthSession } from "../api/authStorage";
+import BottomNavBar from "../components/BottomNavBar";
 
 export default function CameraScreen() {
   const [permission, requestPermission] = useCameraPermissions();
@@ -743,6 +744,7 @@ export default function CameraScreen() {
         </TouchableOpacity>
 
       </View>
+      <BottomNavBar activeRoute="camera" />
     </View>
   );
 }

@@ -13,6 +13,7 @@ import {
 import { router } from "expo-router";
 import { API_URL } from "../api/api";
 import { getAuthToken } from "../api/authStorage";
+import BottomNavBar from "../components/BottomNavBar";
 
 const { width } = Dimensions.get("window");
 const COLUMN_WIDTH = (width - 36) / 2;
@@ -191,6 +192,7 @@ export default function DiscoverScreen() {
           )}
         />
       )}
+      <BottomNavBar activeRoute="discover" />
     </View>
   );
 }

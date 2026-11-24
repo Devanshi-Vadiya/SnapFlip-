@@ -86,4 +86,35 @@ router.get("/:username", async (req, res) => {
   }
 });
 
+// PUT /api/users/profile - Update own profile (bio, avatarUrl)
+router.put("/profile", authMiddleware, async (req, res) => {
+  try {
+    const { bio, avatarUrl } = req.body;
+    const user = await User.findById(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (bio !== undefined) user.bio = String(bio).trim();
+    if (avatarUrl !== undefined) user.avatarUrl = String(avatarUrl).trim();
+
+    await user.save();
+
+    res.status(200).json({
+      message: "Profile updated successfully",
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        avatarUrl: user.avatarUrl,
+        bio: user.bio,
+      },
+    });
+  } catch (error) {
+    console.error("Update profile error:", error);
+    res.status(500).json({ message: "Failed to update profile" });
+  }
+});
+
 module.exports = router;
