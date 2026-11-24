@@ -1,8 +1,10 @@
 import { CameraView, useCameraPermissions } from "expo-camera";
+import { captureRef } from "react-native-view-shot";
 import * as Location from "expo-location";
 import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { API_URL } from "./api";
+import { API_URL } from "../api/api";
+
 import {
   Button,
   Image,
@@ -14,8 +16,9 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import * as SecureStore from "expo-secure-store";
 
+import * as SecureStore from "expo-secure-store";
+import { clearAuthSession } from "../api/authStorage";
 
 export default function CameraScreen() {
   const [permission, requestPermission] = useCameraPermissions();
@@ -32,6 +35,7 @@ export default function CameraScreen() {
   const [text, setText] = useState("");
 
   const cameraRef = useRef<CameraView>(null);
+  const previewRef = useRef<View>(null);
 
   // =========================
   // SWIPE NAVIGATION
@@ -69,32 +73,37 @@ export default function CameraScreen() {
   // =========================
 
   const getLocation = async () => {
-    const { status } =
-      await Location.requestForegroundPermissionsAsync();
+    try {
+      const { status } =
+        await Location.requestForegroundPermissionsAsync();
 
-    if (status !== "granted") {
-      alert("Location permission is required");
-      return;
-    }
+      if (status !== "granted") {
+        alert("Location permission is required");
+        return;
+      }
 
-    const currentLocation =
-      await Location.getCurrentPositionAsync({});
+      const currentLocation =
+        await Location.getCurrentPositionAsync({});
 
-    const places = await Location.reverseGeocodeAsync({
-      latitude: currentLocation.coords.latitude,
-      longitude: currentLocation.coords.longitude,
-    });
+      const places = await Location.reverseGeocodeAsync({
+        latitude: currentLocation.coords.latitude,
+        longitude: currentLocation.coords.longitude,
+      });
 
-    if (places.length > 0) {
-      const place = places[0];
+      if (places.length > 0) {
+        const place = places[0];
 
-      const city =
-        place.city ||
-        place.subregion ||
-        place.region ||
-        "Unknown location";
+        const city =
+          place.city ||
+          place.subregion ||
+          place.region ||
+          "Unknown location";
 
-      setLocation(city);
+        setLocation(city);
+      }
+    } catch (error) {
+      console.log("Location error:", error);
+      alert("Could not get location");
     }
   };
 
@@ -127,19 +136,32 @@ export default function CameraScreen() {
 
   const takePicture = async () => {
     if (cameraRef.current) {
-      const result =
-        await cameraRef.current.takePictureAsync();
+      try {
+        const result =
+          await cameraRef.current.takePictureAsync();
 
-      if (result) {
-        setPhoto(result.uri);
+        if (result) {
+          setPhoto(result.uri);
+        }
+      } catch (error) {
+        console.log("Camera error:", error);
+        alert("Could not take picture");
       }
     }
   };
 
   // =========================
-  // UPLOAD PHOTO
+  // LOGOUT
   // =========================
 
+  const handleLogout = async () => {
+    await clearAuthSession();
+    router.replace("/login");
+  };
+
+  // =========================
+  // UPLOAD PHOTO
+  // =========================
   const uploadPhoto = async () => {
     if (!photo || uploading) {
       return;
@@ -148,26 +170,51 @@ export default function CameraScreen() {
     try {
       setUploading(true);
 
+      let uploadUri = photo;
+
+      // Bake text into the uploaded image
+      if (
+        (filter === "text" && text.trim() !== "") ||
+        filter === "time" ||
+        (filter === "location" && location)
+      ) {
+        if (!previewRef.current) {
+          alert("Could not prepare photo");
+          return;
+        }
+
+        uploadUri = await captureRef(previewRef, {
+          format: "jpg",
+          quality: 1,
+          result: "tmpfile",
+        });
+
+        console.log("CAPTURED IMAGE:", uploadUri);
+      }
+
       const formData = new FormData();
 
       formData.append("image", {
-        uri: photo,
+        uri: uploadUri,
         name: "snapfilter-photo.jpg",
         type: "image/jpeg",
       } as any);
 
-      formData.append("username", "testuser");
       formData.append("caption", "My SnapFilter photo");
+      formData.append("filter", filter);
 
       const token = await SecureStore.getItemAsync("token");
 
-      const response = await fetch(`${API_URL}/api/photos/upload`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
+      const response = await fetch(
+        `${API_URL}/api/photos/upload`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: formData,
+        }
+      );
 
       const data = await response.json();
 
@@ -193,13 +240,90 @@ export default function CameraScreen() {
     return (
       <View style={styles.container}>
 
-        {/* CAPTURED PHOTO */}
-        <Image
-          source={{ uri: photo }}
-          style={styles.preview}
-        />
+        {/* =========================
+            CAPTURED PHOTO + TEXT
+            ========================= */}
 
-        {/* RETAKE + UPLOAD */}
+        <View
+          ref={previewRef}
+          collapsable={false}
+          style={styles.previewContainer}
+        >
+          <Image
+            source={{ uri: photo }}
+            style={styles.preview}
+          />
+
+          {/* FILTER OVERLAYS */}
+          {filter === "warm" && (
+            <View
+              pointerEvents="none"
+              style={styles.warmFilter}
+            />
+          )}
+
+          {filter === "cool" && (
+            <View
+              pointerEvents="none"
+              style={styles.coolFilter}
+            />
+          )}
+
+          {filter === "bw" && (
+            <View
+              pointerEvents="none"
+              style={styles.bwFilter}
+            />
+          )}
+
+          {filter === "vintage" && (
+            <View
+              pointerEvents="none"
+              style={styles.vintageFilter}
+            />
+          )}
+
+          {/* TEXT OVERLAY */}
+          {filter === "text" && text.trim() !== "" && (
+            <View style={styles.previewTextContainer}>
+              <Text style={styles.previewText}>
+                {text}
+              </Text>
+            </View>
+          )}
+
+          {/* TIME OVERLAY */}
+          {filter === "time" && (
+            <View
+              pointerEvents="none"
+              style={styles.timeFilter}
+            >
+              <Text style={styles.timeText}>
+                {currentTime.toLocaleTimeString()}
+              </Text>
+
+              <Text style={styles.dateText}>
+                {currentTime.toLocaleDateString()}
+              </Text>
+            </View>
+          )}
+          {/* LOCATION OVERLAY */}
+          {filter === "location" && location && (
+            <View
+              pointerEvents="none"
+              style={styles.locationFilter}
+            >
+              <Text style={styles.locationText}>
+                📍 {location}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* =========================
+            RETAKE + UPLOAD
+            ========================= */}
+
         <View style={styles.retakeButton}>
 
           <Button
@@ -332,7 +456,7 @@ export default function CameraScreen() {
 
       <TouchableOpacity
         style={styles.logoutButton}
-        onPress={() => router.replace("/login")}
+        onPress={handleLogout}
         activeOpacity={0.8}
       >
         <Text style={styles.logoutText}>
@@ -355,10 +479,13 @@ export default function CameraScreen() {
             contentContainerStyle={styles.filters}
           >
 
+            {/* NORMAL */}
+
             <TouchableOpacity
               style={[
                 styles.filterItem,
-                filter === "normal" && styles.activeFilter,
+                filter === "normal" &&
+                styles.activeFilter,
               ]}
               onPress={() => setFilter("normal")}
             >
@@ -367,10 +494,13 @@ export default function CameraScreen() {
               </Text>
             </TouchableOpacity>
 
+            {/* WARM */}
+
             <TouchableOpacity
               style={[
                 styles.filterItem,
-                filter === "warm" && styles.activeFilter,
+                filter === "warm" &&
+                styles.activeFilter,
               ]}
               onPress={() => setFilter("warm")}
             >
@@ -379,10 +509,13 @@ export default function CameraScreen() {
               </Text>
             </TouchableOpacity>
 
+            {/* COOL */}
+
             <TouchableOpacity
               style={[
                 styles.filterItem,
-                filter === "cool" && styles.activeFilter,
+                filter === "cool" &&
+                styles.activeFilter,
               ]}
               onPress={() => setFilter("cool")}
             >
@@ -391,10 +524,13 @@ export default function CameraScreen() {
               </Text>
             </TouchableOpacity>
 
+            {/* B&W */}
+
             <TouchableOpacity
               style={[
                 styles.filterItem,
-                filter === "bw" && styles.activeFilter,
+                filter === "bw" &&
+                styles.activeFilter,
               ]}
               onPress={() => setFilter("bw")}
             >
@@ -403,10 +539,13 @@ export default function CameraScreen() {
               </Text>
             </TouchableOpacity>
 
+            {/* VINTAGE */}
+
             <TouchableOpacity
               style={[
                 styles.filterItem,
-                filter === "vintage" && styles.activeFilter,
+                filter === "vintage" &&
+                styles.activeFilter,
               ]}
               onPress={() => setFilter("vintage")}
             >
@@ -415,10 +554,13 @@ export default function CameraScreen() {
               </Text>
             </TouchableOpacity>
 
+            {/* TIME */}
+
             <TouchableOpacity
               style={[
                 styles.filterItem,
-                filter === "time" && styles.activeFilter,
+                filter === "time" &&
+                styles.activeFilter,
               ]}
               onPress={() => setFilter("time")}
             >
@@ -427,10 +569,13 @@ export default function CameraScreen() {
               </Text>
             </TouchableOpacity>
 
+            {/* LOCATION */}
+
             <TouchableOpacity
               style={[
                 styles.filterItem,
-                filter === "location" && styles.activeFilter,
+                filter === "location" &&
+                styles.activeFilter,
               ]}
               onPress={() => {
                 setFilter("location");
@@ -442,10 +587,13 @@ export default function CameraScreen() {
               </Text>
             </TouchableOpacity>
 
+            {/* TEXT */}
+
             <TouchableOpacity
               style={[
                 styles.filterItem,
-                filter === "text" && styles.activeFilter,
+                filter === "text" &&
+                styles.activeFilter,
               ]}
               onPress={() => setFilter("text")}
             >
@@ -457,13 +605,17 @@ export default function CameraScreen() {
           </ScrollView>
         </View>
 
-        {/* SWIPE HINT */}
+        {/* =========================
+            SWIPE HINT
+            ========================= */}
 
         <Text style={styles.swipeHint}>
           Swipe left for Feed →
         </Text>
 
-        {/* CAMERA BUTTON */}
+        {/* =========================
+            CAMERA BUTTON
+            ========================= */}
 
         <TouchableOpacity
           style={styles.cameraButton}
@@ -501,9 +653,49 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
+  // =========================
+  // PHOTO PREVIEW
+  // =========================
+
+  previewContainer: {
+    flex: 1,
+    width: "100%",
+    position: "relative",
+    backgroundColor: "#000",
+  },
+
   preview: {
     flex: 1,
     width: "100%",
+  },
+
+  // =========================
+  // TEXT ON CAPTURED PHOTO
+  // =========================
+
+  previewTextContainer: {
+    position: "absolute",
+    bottom: 120,
+    left: 20,
+    right: 20,
+    alignItems: "center",
+    zIndex: 10,
+  },
+
+  previewText: {
+    color: "#fff",
+    fontSize: 28,
+    fontWeight: "bold",
+    textAlign: "center",
+
+    textShadowColor: "rgba(0, 0, 0, 0.8)",
+
+    textShadowOffset: {
+      width: 2,
+      height: 2,
+    },
+
+    textShadowRadius: 4,
   },
 
   // =========================
@@ -512,12 +704,14 @@ const styles = StyleSheet.create({
 
   logoutButton: {
     position: "absolute",
+
     top: 48,
     right: 16,
 
     zIndex: 20,
 
-    backgroundColor: "rgba(0, 0, 0, 0.55)",
+    backgroundColor:
+      "rgba(0, 0, 0, 0.55)",
 
     paddingVertical: 8,
     paddingHorizontal: 16,
@@ -525,7 +719,9 @@ const styles = StyleSheet.create({
     borderRadius: 20,
 
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.35)",
+
+    borderColor:
+      "rgba(255, 255, 255, 0.35)",
   },
 
   logoutText: {
@@ -557,12 +753,15 @@ const styles = StyleSheet.create({
   filtersContainer: {
     width: "100%",
 
-    backgroundColor: "rgba(0, 0, 0, 0.55)",
+    backgroundColor:
+      "rgba(0, 0, 0, 0.55)",
 
     borderRadius: 24,
 
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.25)",
+
+    borderColor:
+      "rgba(255, 255, 255, 0.25)",
 
     paddingVertical: 8,
 
@@ -587,10 +786,13 @@ const styles = StyleSheet.create({
   },
 
   activeFilter: {
-    backgroundColor: "rgba(255, 255, 255, 0.20)",
+    backgroundColor:
+      "rgba(255, 255, 255, 0.20)",
 
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.6)",
+
+    borderColor:
+      "rgba(255, 255, 255, 0.6)",
   },
 
   filterText: {
@@ -631,8 +833,9 @@ const styles = StyleSheet.create({
 
     borderWidth: 3,
     borderColor: "#fff",
-
-    backgroundColor: "rgba(255, 255, 255, 0.16)",
+     
+    backgroundColor:
+      "rgba(255, 255, 255, 0.16)",
 
     justifyContent: "center",
     alignItems: "center",
@@ -644,7 +847,8 @@ const styles = StyleSheet.create({
 
     borderRadius: 34,
 
-    backgroundColor: "rgba(255, 255, 255, 0.32)",
+    backgroundColor:
+      "rgba(255, 255, 255, 0.32)",
 
     justifyContent: "center",
     alignItems: "center",
@@ -664,7 +868,7 @@ const styles = StyleSheet.create({
     backgroundColor:
       "rgba(255, 180, 80, 0.25)",
   },
-
+  
   coolFilter: {
     ...StyleSheet.absoluteFillObject,
 
@@ -673,11 +877,9 @@ const styles = StyleSheet.create({
   },
 
   bwFilter: {
-    ...StyleSheet.absoluteFillObject,
-
-    backgroundColor:
-      "rgba(0, 0, 0, 0.45)",
-  },
+  ...StyleSheet.absoluteFillObject,
+  backgroundColor: "rgba(0, 0, 0, 0.75)",
+},
 
   vintageFilter: {
     ...StyleSheet.absoluteFillObject,
@@ -727,7 +929,8 @@ const styles = StyleSheet.create({
 
     alignSelf: "center",
 
-    backgroundColor: "rgba(0, 0, 0, 0.45)",
+    backgroundColor:
+      "rgba(0, 0, 0, 0.45)",
 
     paddingVertical: 8,
     paddingHorizontal: 15,
