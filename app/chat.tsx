@@ -159,7 +159,7 @@ export default function ChatScreen() {
         <Text style={styles.headerTitle}>Chat</Text>
         <TouchableOpacity
           style={styles.newChatBtn}
-          onPress={() => router.push("/discover")}
+          onPress={() => router.push("/discover" as any)}
         >
           <Text style={styles.newChatText}>+ New Chat</Text>
         </TouchableOpacity>
@@ -177,7 +177,7 @@ export default function ChatScreen() {
           </Text>
           <TouchableOpacity
             style={styles.discoverBtn}
-            onPress={() => router.push("/discover")}
+            onPress={() => router.push("/discover" as any)}
           >
             <Text style={styles.discoverBtnText}>Find Creators 🔍</Text>
           </TouchableOpacity>
