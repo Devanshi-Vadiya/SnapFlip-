@@ -7,6 +7,7 @@ const cloudinary = require("cloudinary").v2;
 const app = express();
 const authRoutes = require("./routes/auth");
 const photoRoutes = require("./routes/photos");
+const commentRoutes = require("./routes/comments");
 
 // Middleware
 app.use(cors());
@@ -23,6 +24,7 @@ cloudinary.config({
 // API Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/photos", photoRoutes);
+app.use("/api/comments", commentRoutes);
 
 app.get("/", (req, res) => {
   res.json({

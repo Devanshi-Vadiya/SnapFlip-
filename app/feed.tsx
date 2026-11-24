@@ -14,6 +14,10 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 
 import { router } from "expo-router";
@@ -29,6 +33,14 @@ type Post = {
   isLikedByMe?: boolean;
   avatarUrl?: string;
   createdAt?: string;
+};
+
+type CommentItem = {
+  id: string;
+  username: string;
+  text: string;
+  createdAt: string;
+  userId?: string;
 };
 
 export default function FeedScreen() {
@@ -57,6 +69,69 @@ export default function FeedScreen() {
   const [imageRatios, setImageRatios] = useState<
     Record<string, number>
   >({});
+
+  // Comments state
+  const [commentModalVisible, setCommentModalVisible] = useState(false);
+  const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+  const [comments, setComments] = useState<CommentItem[]>([]);
+  const [newCommentText, setNewCommentText] = useState("");
+  const [submittingComment, setSubmittingComment] = useState(false);
+  const [loadingComments, setLoadingComments] = useState(false);
+
+  const openComments = async (post: Post) => {
+    setSelectedPost(post);
+    setCommentModalVisible(true);
+    setLoadingComments(true);
+    try {
+      const response = await fetch(`${API_URL}/api/comments/${post.id}`);
+      const data = await response.json();
+      if (response.ok && Array.isArray(data)) {
+        setComments(data);
+      } else {
+        setComments([]);
+      }
+    } catch (err) {
+      console.error("Failed to fetch comments:", err);
+      setComments([]);
+    } finally {
+      setLoadingComments(false);
+    }
+  };
+
+  const submitComment = async () => {
+    if (!selectedPost || !newCommentText.trim() || submittingComment) return;
+
+    const token = await getAuthToken();
+    if (!token) {
+      alert("Please log in to comment");
+      return;
+    }
+
+    try {
+      setSubmittingComment(true);
+      const response = await fetch(`${API_URL}/api/comments/${selectedPost.id}`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ text: newCommentText.trim() }),
+      });
+
+      const data = await response.json();
+      if (response.ok && data.comment) {
+        setComments((prev) => [...prev, data.comment]);
+        setNewCommentText("");
+      } else {
+        alert(data.message || "Failed to post comment");
+      }
+    } catch (err) {
+      console.error("Error submitting comment:", err);
+      alert("Network error posting comment");
+    } finally {
+      setSubmittingComment(false);
+    }
+  };
   // =========================
   // FETCH REAL PHOTOS
   // =========================
@@ -345,19 +420,26 @@ export default function FeedScreen() {
 
         <View style={styles.actions}>
           <TouchableOpacity
-            onPress={() =>
-              likePost(item.id)
-            }
+            onPress={() => likePost(item.id)}
             activeOpacity={0.7}
+            style={styles.actionBtn}
           >
             <Text style={styles.heart}>
               {isLiked ? "❤️" : "🤍"}
             </Text>
+            <Text style={styles.likes}>
+              {likeCounts[item.id] || 0}
+            </Text>
           </TouchableOpacity>
 
-          <Text style={styles.likes}>
-            {likeCounts[item.id] || 0} likes
-          </Text>
+          <TouchableOpacity
+            onPress={() => openComments(item)}
+            activeOpacity={0.7}
+            style={styles.actionBtn}
+          >
+            <Text style={styles.commentIcon}>💬</Text>
+            <Text style={styles.commentBtnText}>Comments</Text>
+          </TouchableOpacity>
         </View>
 
         {/* CAPTION */}
@@ -472,6 +554,66 @@ export default function FeedScreen() {
           refreshing={loading}
         />
       )}
+      {/* COMMENTS MODAL */}
+      <Modal
+        visible={commentModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setCommentModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.modalOverlay}
+        >
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Comments</Text>
+              <TouchableOpacity onPress={() => setCommentModalVisible(false)}>
+                <Text style={styles.closeBtn}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            {loadingComments ? (
+              <ActivityIndicator size="small" color="#FFFC00" style={{ marginVertical: 20 }} />
+            ) : comments.length === 0 ? (
+              <Text style={styles.noCommentsText}>No comments yet. Say something nice!</Text>
+            ) : (
+              <FlatList
+                data={comments}
+                keyExtractor={(c) => c.id || (c as any)._id}
+                renderItem={({ item: c }) => (
+                  <View style={styles.commentRow}>
+                    <Text style={styles.commentAuthor}>{c.username}</Text>
+                    <Text style={styles.commentBody}>{c.text}</Text>
+                  </View>
+                )}
+                style={styles.commentsList}
+              />
+            )}
+
+            <View style={styles.commentInputRow}>
+              <TextInput
+                style={styles.commentTextInput}
+                placeholder="Add a comment..."
+                placeholderTextColor="#888"
+                value={newCommentText}
+                onChangeText={setNewCommentText}
+                maxLength={300}
+              />
+              <TouchableOpacity
+                style={[
+                  styles.sendCommentBtn,
+                  !newCommentText.trim() && { opacity: 0.5 },
+                ]}
+                onPress={submitComment}
+                disabled={!newCommentText.trim() || submittingComment}
+              >
+                <Text style={styles.sendCommentText}>Send</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -668,16 +810,135 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 12,
     paddingTop: 10,
+    gap: 16,
+  },
+
+  actionBtn: {
+    flexDirection: "row",
+    alignItems: "center",
   },
 
   heart: {
-    fontSize: 28,
+    fontSize: 24,
+  },
+
+  commentIcon: {
+    fontSize: 22,
+  },
+
+  commentBtnText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#555",
+    marginLeft: 6,
   },
 
   likes: {
     fontSize: 15,
     fontWeight: "700",
-    marginLeft: 8,
+    marginLeft: 6,
+  },
+
+  // =========================
+  // COMMENTS MODAL
+  // =========================
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
+  },
+
+  modalContent: {
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: "75%",
+    minHeight: 350,
+    padding: 16,
+  },
+
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#EEEEEE",
+  },
+
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#111111",
+  },
+
+  closeBtn: {
+    fontSize: 20,
+    color: "#777777",
+    fontWeight: "bold",
+    padding: 4,
+  },
+
+  noCommentsText: {
+    textAlign: "center",
+    color: "#888888",
+    marginVertical: 40,
+    fontSize: 15,
+  },
+
+  commentsList: {
+    flex: 1,
+    marginVertical: 10,
+  },
+
+  commentRow: {
+    paddingVertical: 8,
+    borderBottomWidth: 0.5,
+    borderBottomColor: "#F0F0F0",
+  },
+
+  commentAuthor: {
+    fontWeight: "bold",
+    fontSize: 14,
+    color: "#111111",
+    marginBottom: 2,
+  },
+
+  commentBody: {
+    fontSize: 14,
+    color: "#333333",
+  },
+
+  commentInputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: "#EEEEEE",
+    gap: 8,
+  },
+
+  commentTextInput: {
+    flex: 1,
+    backgroundColor: "#F4F4F4",
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    fontSize: 15,
+  },
+
+  sendCommentBtn: {
+    backgroundColor: "#111111",
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+
+  sendCommentText: {
+    color: "#FFFFFF",
+    fontWeight: "bold",
+    fontSize: 14,
   },
 
   // =========================
