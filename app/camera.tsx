@@ -224,12 +224,76 @@ export default function CameraScreen() {
       if (response.ok) {
         alert("Photo uploaded successfully ☁️");
         console.log("Uploaded photo:", data);
+        setPhoto(null);
+        setCaption("");
+        router.push("/feed");
       } else {
         alert(data.message || "Upload failed");
       }
     } catch (error) {
       console.log("Upload error:", error);
       alert(`Upload error: ${error}`);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // =========================
+  // UPLOAD STORY (24H EXPIRY)
+  // =========================
+  const uploadAsStory = async () => {
+    if (!photo || uploading) return;
+
+    try {
+      setUploading(true);
+
+      let uploadUri = photo;
+      if (
+        (filter === "text" && text.trim() !== "") ||
+        filter === "time" ||
+        (filter === "location" && location)
+      ) {
+        if (previewRef.current) {
+          uploadUri = await captureRef(previewRef, {
+            format: "jpg",
+            quality: 1,
+            result: "tmpfile",
+          });
+        }
+      }
+
+      const formData = new FormData();
+      formData.append("image", {
+        uri: uploadUri,
+        name: "snapflip-story.jpg",
+        type: "image/jpeg",
+      } as any);
+
+      formData.append("caption", caption.trim() || "");
+      formData.append("filter", filter);
+
+      const token = await SecureStore.getItemAsync("token");
+
+      const response = await fetch(`${API_URL}/api/stories/upload`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        alert("Posted to Story! 🌟 Active for 24 hours.");
+        setPhoto(null);
+        setCaption("");
+        router.push("/feed");
+      } else {
+        alert(data.message || "Failed to post story");
+      }
+    } catch (error) {
+      console.error("Story upload error:", error);
+      alert(`Story error: ${error}`);
     } finally {
       setUploading(false);
     }
@@ -342,10 +406,18 @@ export default function CameraScreen() {
             ========================= */}
 
         <View style={styles.retakeButton}>
-
           <Button
             title="📷 Retake"
             onPress={() => setPhoto(null)}
+          />
+
+          <View style={styles.buttonSpacing} />
+
+          <Button
+            title={uploading ? "⏳ Posting..." : "🌟 Post to Story"}
+            onPress={uploadAsStory}
+            disabled={uploading}
+            color="#CCA000"
           />
 
           <View style={styles.buttonSpacing} />

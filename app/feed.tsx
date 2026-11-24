@@ -24,6 +24,8 @@ import {
 import { router } from "expo-router";
 import { API_URL } from "../api/api";
 import { getAuthToken, getStoredUser, AuthUser } from "../api/authStorage";
+import StoryTray, { UserStoryGroup } from "../components/StoryTray";
+import StoryViewer from "../components/StoryViewer";
 
 type Post = {
   id: string;
@@ -80,6 +82,11 @@ export default function FeedScreen() {
   const [newCommentText, setNewCommentText] = useState("");
   const [submittingComment, setSubmittingComment] = useState(false);
   const [loadingComments, setLoadingComments] = useState(false);
+
+  // Stories state
+  const [storyGroups, setStoryGroups] = useState<UserStoryGroup[]>([]);
+  const [selectedStoryGroup, setSelectedStoryGroup] = useState<UserStoryGroup | null>(null);
+  const [storyViewerVisible, setStoryViewerVisible] = useState(false);
 
   const deletePost = (postId: string) => {
     Alert.alert(
@@ -210,6 +217,17 @@ export default function FeedScreen() {
       }));
 
       setPosts(formattedPosts);
+
+      // Fetch active 24h stories
+      try {
+        const storiesRes = await fetch(`${API_URL}/api/stories/feed`, { headers });
+        const storiesData = await storiesRes.json();
+        if (storiesRes.ok && Array.isArray(storiesData)) {
+          setStoryGroups(storiesData);
+        }
+      } catch (sErr) {
+        console.error("Stories fetch error:", sErr);
+      }
 
       const initialLiked = formattedPosts
         .filter((p) => p.isLikedByMe)
@@ -586,21 +604,43 @@ export default function FeedScreen() {
       {/* FEED */}
 
       {posts.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>
-            No photos yet 📸
-          </Text>
+        <View style={{ flex: 1 }}>
+          <StoryTray
+            storyGroups={storyGroups}
+            currentUsername={currentUser?.username}
+            onSelectGroup={(group) => {
+              setSelectedStoryGroup(group);
+              setStoryViewerVisible(true);
+            }}
+            onAddStory={() => router.push("/camera")}
+          />
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>
+              No photos yet 📸
+            </Text>
 
-          <Text style={styles.emptySubtext}>
-            Upload a photo from the camera
-            to see it here.
-          </Text>
+            <Text style={styles.emptySubtext}>
+              Upload a photo from the camera
+              to see it here.
+            </Text>
+          </View>
         </View>
       ) : (
         <FlatList
           data={posts}
           keyExtractor={(item) =>
             item.id
+          }
+          ListHeaderComponent={
+            <StoryTray
+              storyGroups={storyGroups}
+              currentUsername={currentUser?.username}
+              onSelectGroup={(group) => {
+                setSelectedStoryGroup(group);
+                setStoryViewerVisible(true);
+              }}
+              onAddStory={() => router.push("/camera")}
+            />
           }
           renderItem={renderPost}
           showsVerticalScrollIndicator={false}
@@ -611,6 +651,20 @@ export default function FeedScreen() {
           refreshing={loading}
         />
       )}
+
+      {/* STORY VIEWER MODAL */}
+      <StoryViewer
+        visible={storyViewerVisible}
+        group={selectedStoryGroup}
+        currentUsername={currentUser?.username}
+        onClose={() => {
+          setStoryViewerVisible(false);
+          setSelectedStoryGroup(null);
+        }}
+        onStoryDeleted={() => {
+          fetchPosts();
+        }}
+      />
       {/* COMMENTS MODAL */}
       <Modal
         visible={commentModalVisible}
