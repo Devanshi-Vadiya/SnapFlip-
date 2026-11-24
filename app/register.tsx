@@ -1,11 +1,15 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
   TextInput,
-  Button,
+  TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StatusBar,
 } from "react-native";
 import { router } from "expo-router";
 import { API_URL } from "../api/api";
@@ -15,6 +19,7 @@ export default function RegisterScreen() {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleRegister = async () => {
@@ -70,7 +75,7 @@ export default function RegisterScreen() {
 
       if (response.ok && data.token && data.user) {
         await saveAuthSession(data.token, data.user);
-        alert("Registration successful! Welcome to SnapFlip 🎉");
+        alert("Account created successfully! Welcome to SnapFlip 🎉");
         router.replace("/camera");
       } else {
         alert(data.message || "Registration failed");
@@ -84,86 +89,240 @@ export default function RegisterScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Join SnapFlip</Text>
-      <Text style={styles.subtitle}>Create an account to start snapping</Text>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={styles.container}
+    >
+      <StatusBar barStyle="light-content" backgroundColor="#0A0B10" />
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* LOGO & BRANDING */}
+        <View style={styles.brandContainer}>
+          <View style={styles.logoBadge}>
+            <Text style={styles.logoIcon}>📸</Text>
+          </View>
+          <Text style={styles.brandTitle}>Join SnapFlip</Text>
+          <Text style={styles.brandTagline}>Share your stories with the world.</Text>
+        </View>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Username"
-        placeholderTextColor="#888"
-        autoCapitalize="none"
-        value={username}
-        onChangeText={setUsername}
-      />
+        {/* REGISTER FORM CARD */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Create Your Account</Text>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        placeholderTextColor="#888"
-        keyboardType="email-address"
-        autoCapitalize="none"
-        value={email}
-        onChangeText={setEmail}
-      />
+          {/* USERNAME */}
+          <View style={styles.inputContainer}>
+            <Text style={styles.inputLabel}>USERNAME</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g. alexsnap"
+              placeholderTextColor="#666874"
+              autoCapitalize="none"
+              value={username}
+              onChangeText={setUsername}
+            />
+          </View>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Password (min. 6 characters)"
-        placeholderTextColor="#888"
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-      />
+          {/* EMAIL */}
+          <View style={styles.inputContainer}>
+            <Text style={styles.inputLabel}>EMAIL ADDRESS</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="name@example.com"
+              placeholderTextColor="#666874"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              value={email}
+              onChangeText={setEmail}
+            />
+          </View>
 
-      {loading ? (
-        <ActivityIndicator size="large" color="#FFFC00" style={{ marginVertical: 10 }} />
-      ) : (
-        <Button title="Register" onPress={handleRegister} color="#111" />
-      )}
+          {/* PASSWORD WITH TOGGLE */}
+          <View style={styles.inputContainer}>
+            <Text style={styles.inputLabel}>PASSWORD (MIN 6 CHARACTERS)</Text>
+            <View style={styles.passwordRow}>
+              <TextInput
+                style={styles.passwordInput}
+                placeholder="Choose a strong password"
+                placeholderTextColor="#666874"
+                secureTextEntry={!showPassword}
+                value={password}
+                onChangeText={setPassword}
+              />
+              <TouchableOpacity
+                onPress={() => setShowPassword(!showPassword)}
+                style={styles.eyeBtn}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Text style={styles.eyeText}>{showPassword ? "👁️" : "🔒"}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
 
-      <View style={styles.space} />
+          {/* SIGN UP BUTTON */}
+          <TouchableOpacity
+            style={[styles.primaryButton, loading && styles.buttonDisabled]}
+            onPress={handleRegister}
+            disabled={loading}
+            activeOpacity={0.85}
+          >
+            {loading ? (
+              <ActivityIndicator color="#000000" size="small" />
+            ) : (
+              <Text style={styles.primaryButtonText}>Create Account</Text>
+            )}
+          </TouchableOpacity>
+        </View>
 
-      <Button
-        title="Already have an account? Login"
-        onPress={() => router.push("/login")}
-        color="#555"
-      />
-    </View>
+        {/* LOGIN FOOTER */}
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>Already have an account?</Text>
+          <TouchableOpacity onPress={() => router.push("/login")}>
+            <Text style={styles.footerLink}> Log In</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: "#0A0B10",
+  },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: "center",
-    padding: 25,
-    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 24,
+    paddingVertical: 40,
   },
-  title: {
-    fontSize: 28,
+  brandContainer: {
+    alignItems: "center",
+    marginBottom: 32,
+  },
+  logoBadge: {
+    width: 72,
+    height: 72,
+    borderRadius: 24,
+    backgroundColor: "#FFFC00",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 16,
+    shadowColor: "#FFFC00",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  logoIcon: {
+    fontSize: 34,
+  },
+  brandTitle: {
+    fontSize: 30,
+    fontWeight: "900",
+    color: "#FFFFFF",
+    letterSpacing: 0.5,
+  },
+  brandTagline: {
+    fontSize: 14,
+    color: "#8E92A4",
+    marginTop: 6,
+  },
+  card: {
+    backgroundColor: "#131622",
+    borderRadius: 24,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: "#1E2234",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  cardTitle: {
+    fontSize: 20,
     fontWeight: "bold",
-    textAlign: "center",
-    marginBottom: 6,
-    color: "#111111",
+    color: "#FFFFFF",
+    marginBottom: 18,
   },
-  subtitle: {
-    fontSize: 15,
-    color: "#666666",
-    textAlign: "center",
-    marginBottom: 30,
+  inputContainer: {
+    marginBottom: 16,
+  },
+  inputLabel: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#8E92A4",
+    letterSpacing: 1,
+    marginBottom: 8,
   },
   input: {
+    backgroundColor: "#1C2030",
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    color: "#FFFFFF",
+    fontSize: 15,
     borderWidth: 1,
-    borderColor: "#DDD",
-    borderRadius: 10,
-    padding: 14,
-    marginBottom: 16,
-    fontSize: 16,
-    color: "#111",
-    backgroundColor: "#FAFAFA",
+    borderColor: "#262C42",
   },
-  space: {
-    height: 15,
+  passwordRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#1C2030",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#262C42",
+    paddingHorizontal: 16,
+  },
+  passwordInput: {
+    flex: 1,
+    paddingVertical: 14,
+    color: "#FFFFFF",
+    fontSize: 15,
+  },
+  eyeBtn: {
+    padding: 4,
+  },
+  eyeText: {
+    fontSize: 16,
+  },
+  primaryButton: {
+    backgroundColor: "#FFFC00",
+    borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: "center",
+    marginTop: 10,
+    shadowColor: "#FFFC00",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+  primaryButtonText: {
+    color: "#000000",
+    fontSize: 16,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+  },
+  footer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 26,
+  },
+  footerText: {
+    color: "#8E92A4",
+    fontSize: 14,
+  },
+  footerLink: {
+    color: "#FFFC00",
+    fontSize: 14,
+    fontWeight: "bold",
   },
 });

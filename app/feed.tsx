@@ -19,11 +19,13 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  StatusBar,
 } from "react-native";
 
 import { router } from "expo-router";
 import { API_URL } from "../api/api";
 import { getAuthToken, getStoredUser, AuthUser } from "../api/authStorage";
+import { formatRelativeTime } from "../utils/formatTime";
 import StoryTray, { UserStoryGroup } from "../components/StoryTray";
 import StoryViewer from "../components/StoryViewer";
 import BottomNavBar from "../components/BottomNavBar";
@@ -429,9 +431,16 @@ export default function FeedScreen() {
               </Text>
             </View>
 
-            <Text style={styles.username}>
-              {item.username}
-            </Text>
+            <View>
+              <Text style={styles.username}>
+                @{item.username}
+              </Text>
+              {item.createdAt ? (
+                <Text style={styles.timestampText}>
+                  {formatRelativeTime(item.createdAt)}
+                </Text>
+              ) : null}
+            </View>
           </View>
 
           {currentUser &&
@@ -589,17 +598,19 @@ export default function FeedScreen() {
       {/* HEADER */}
 
       <View style={styles.feedHeader}>
-        <Text style={styles.title}>
-          SnapFilter
-        </Text>
+        <View style={styles.feedHeaderLeft}>
+          <View style={styles.logoBadgeSmall}>
+            <Text style={styles.logoIconSmall}>📸</Text>
+          </View>
+          <Text style={styles.title}>SnapFlip</Text>
+        </View>
 
-        <Text style={styles.subtitle}>
-          Your Feed
-        </Text>
-
-        <Text style={styles.swipeHint}>
-          ← Swipe right for Camera
-        </Text>
+        <TouchableOpacity
+          style={styles.headerCameraBtn}
+          onPress={() => router.push("/camera")}
+        >
+          <Text style={styles.headerCameraText}>+ Snap</Text>
+        </TouchableOpacity>
       </View>
 
       {/* FEED */}
@@ -738,7 +749,7 @@ const styles = StyleSheet.create({
 
   container: {
     flex: 1,
-    backgroundColor: "#f4f4f4",
+    backgroundColor: "#0A0B10",
   },
 
   // =========================
@@ -749,32 +760,32 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#f4f4f4",
+    backgroundColor: "#0A0B10",
     padding: 20,
   },
 
   loadingText: {
     marginTop: 12,
     fontSize: 16,
-    color: "#777",
+    color: "#8E92A4",
   },
 
   errorText: {
     fontSize: 16,
-    color: "#555",
+    color: "#8E92A4",
     textAlign: "center",
     marginBottom: 20,
   },
 
   retryButton: {
-    backgroundColor: "#222",
+    backgroundColor: "#FFFC00",
     paddingHorizontal: 25,
     paddingVertical: 12,
     borderRadius: 25,
   },
 
   retryText: {
-    color: "#fff",
+    color: "#000000",
     fontWeight: "700",
   },
 
@@ -787,17 +798,19 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     padding: 30,
+    marginTop: 60,
   },
 
   emptyText: {
     fontSize: 22,
     fontWeight: "700",
+    color: "#FFFFFF",
   },
 
   emptySubtext: {
     marginTop: 8,
     fontSize: 15,
-    color: "#777",
+    color: "#8E92A4",
     textAlign: "center",
   },
 
@@ -806,20 +819,61 @@ const styles = StyleSheet.create({
   // =========================
 
   feedHeader: {
-    paddingTop: 55,
-    paddingBottom: 15,
+    paddingTop: 52,
+    paddingBottom: 14,
+    paddingHorizontal: 16,
+    flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#fff",
+    backgroundColor: "#11131A",
+    borderBottomWidth: 1,
+    borderBottomColor: "#1D202A",
+  },
+
+  feedHeaderLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+
+  logoBadgeSmall: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: "#FFFC00",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  logoIconSmall: {
+    fontSize: 18,
   },
 
   title: {
-    fontSize: 28,
-    fontWeight: "800",
+    fontSize: 24,
+    fontWeight: "900",
+    color: "#FFFFFF",
+    letterSpacing: 0.5,
+  },
+
+  headerCameraBtn: {
+    backgroundColor: "#1F2332",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#30374E",
+  },
+
+  headerCameraText: {
+    color: "#FFFC00",
+    fontWeight: "bold",
+    fontSize: 13,
   },
 
   subtitle: {
     fontSize: 16,
-    color: "#777",
+    color: "#8E92A4",
     marginTop: 2,
   },
 
@@ -834,7 +888,7 @@ const styles = StyleSheet.create({
   // =========================
 
   feed: {
-    paddingTop: 12,
+    paddingTop: 8,
     paddingBottom: 30,
   },
 
@@ -843,17 +897,12 @@ const styles = StyleSheet.create({
   // =========================
 
   postCard: {
-    backgroundColor: "#fff",
-    marginBottom: 18,
-    borderRadius: 16,
+    backgroundColor: "#131622",
+    marginBottom: 16,
+    borderRadius: 20,
     overflow: "hidden",
-    elevation: 2,
-    shadowOpacity: 0.08,
-    shadowRadius: 5,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    borderWidth: 1,
+    borderColor: "#1E2234",
   },
 
   // =========================
@@ -865,11 +914,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     padding: 12,
+    backgroundColor: "#131622",
   },
 
   userInfoLeft: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 10,
+  },
+
+  timestampText: {
+    fontSize: 11,
+    color: "#7E8398",
+    marginTop: 1,
   },
 
   deleteBtn: {
@@ -884,21 +941,21 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#222",
+    backgroundColor: "#FFFC00",
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 10,
   },
 
   avatarText: {
-    color: "#fff",
+    color: "#000000",
     fontSize: 17,
     fontWeight: "800",
   },
 
   username: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "700",
+    color: "#FFFFFF",
   },
 
   // =========================
@@ -956,13 +1013,14 @@ const styles = StyleSheet.create({
   commentBtnText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#555",
+    color: "#8E92A4",
     marginLeft: 6,
   },
 
   likes: {
     fontSize: 15,
     fontWeight: "700",
+    color: "#FFFFFF",
     marginLeft: 6,
   },
 
@@ -972,44 +1030,46 @@ const styles = StyleSheet.create({
 
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: "rgba(0, 0, 0, 0.75)",
     justifyContent: "flex-end",
   },
 
   modalContent: {
-    backgroundColor: "#FFFFFF",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    backgroundColor: "#131622",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     maxHeight: "75%",
     minHeight: 350,
-    padding: 16,
+    padding: 18,
+    borderTopWidth: 1,
+    borderTopColor: "#1E2234",
   },
 
   modalHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingBottom: 12,
+    paddingBottom: 14,
     borderBottomWidth: 1,
-    borderBottomColor: "#EEEEEE",
+    borderBottomColor: "#1E2234",
   },
 
   modalTitle: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#111111",
+    color: "#FFFFFF",
   },
 
   closeBtn: {
     fontSize: 20,
-    color: "#777777",
+    color: "#8E92A4",
     fontWeight: "bold",
     padding: 4,
   },
 
   noCommentsText: {
     textAlign: "center",
-    color: "#888888",
+    color: "#8E92A4",
     marginVertical: 40,
     fontSize: 15,
   },
@@ -1020,50 +1080,53 @@ const styles = StyleSheet.create({
   },
 
   commentRow: {
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderBottomWidth: 0.5,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: "#1E2234",
   },
 
   commentAuthor: {
     fontWeight: "bold",
-    fontSize: 14,
-    color: "#111111",
-    marginBottom: 2,
+    fontSize: 13,
+    color: "#FFFC00",
+    marginBottom: 3,
   },
 
   commentBody: {
     fontSize: 14,
-    color: "#333333",
+    color: "#FFFFFF",
   },
 
   commentInputRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingTop: 10,
+    paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: "#EEEEEE",
+    borderTopColor: "#1E2234",
     gap: 8,
   },
 
   commentTextInput: {
     flex: 1,
-    backgroundColor: "#F4F4F4",
+    backgroundColor: "#1C2030",
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 10,
     fontSize: 15,
+    color: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#262C42",
   },
 
   sendCommentBtn: {
-    backgroundColor: "#111111",
+    backgroundColor: "#FFFC00",
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 10,
   },
 
   sendCommentText: {
-    color: "#FFFFFF",
+    color: "#000000",
     fontWeight: "bold",
     fontSize: 14,
   },
@@ -1080,11 +1143,13 @@ const styles = StyleSheet.create({
   },
 
   captionUsername: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "800",
+    color: "#FFFFFF",
   },
 
   caption: {
-    fontSize: 15,
+    fontSize: 14,
+    color: "#D0D3E0",
   },
 });

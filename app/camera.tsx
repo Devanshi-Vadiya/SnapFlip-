@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { API_URL } from "../api/api";
 
 import {
+  ActivityIndicator,
   Button,
   Image,
   PanResponder,
@@ -394,8 +395,8 @@ export default function CameraScreen() {
         <View style={styles.captionInputContainer}>
           <TextInput
             style={styles.captionInput}
-            placeholder="Add a caption..."
-            placeholderTextColor="#AAA"
+            placeholder="Add a snap caption..."
+            placeholderTextColor="#8E92A4"
             value={caption}
             onChangeText={setCaption}
             maxLength={140}
@@ -403,36 +404,46 @@ export default function CameraScreen() {
         </View>
 
         {/* =========================
-            RETAKE + UPLOAD
+            PREVIEW ACTIONS
             ========================= */}
+        <View style={styles.previewActionsContainer}>
+          <TouchableOpacity
+            style={styles.actionRetakeBtn}
+            onPress={() => {
+              setPhoto(null);
+              setCaption("");
+            }}
+            disabled={uploading}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.actionRetakeText}>↺ Retake</Text>
+          </TouchableOpacity>
 
-        <View style={styles.retakeButton}>
-          <Button
-            title="📷 Retake"
-            onPress={() => setPhoto(null)}
-          />
-
-          <View style={styles.buttonSpacing} />
-
-          <Button
-            title={uploading ? "⏳ Posting..." : "🌟 Post to Story"}
+          <TouchableOpacity
+            style={[styles.actionStoryBtn, uploading && styles.actionDisabled]}
             onPress={uploadAsStory}
             disabled={uploading}
-            color="#CCA000"
-          />
+            activeOpacity={0.85}
+          >
+            {uploading ? (
+              <ActivityIndicator color="#FFFC00" size="small" />
+            ) : (
+              <Text style={styles.actionStoryText}>🌟 My Story</Text>
+            )}
+          </TouchableOpacity>
 
-          <View style={styles.buttonSpacing} />
-
-          <Button
-            title={
-              uploading
-                ? "⏳ Uploading..."
-                : "☁️ Upload Photo"
-            }
+          <TouchableOpacity
+            style={[styles.actionFeedBtn, uploading && styles.actionDisabled]}
             onPress={uploadPhoto}
             disabled={uploading}
-          />
-
+            activeOpacity={0.85}
+          >
+            {uploading ? (
+              <ActivityIndicator color="#0A0B10" size="small" />
+            ) : (
+              <Text style={styles.actionFeedText}>Send Snap ⚡</Text>
+            )}
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -1095,21 +1106,80 @@ const styles = StyleSheet.create({
   },
 
   // =========================
-  // RETAKE / UPLOAD
+  // RETAKE / UPLOAD ACTIONS
   // =========================
 
-  retakeButton: {
+  previewActionsContainer: {
     position: "absolute",
-
-    bottom: 40,
-
-    alignSelf: "center",
-
+    bottom: 36,
+    left: 16,
+    right: 16,
+    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
   },
 
-  buttonSpacing: {
-    height: 15,
+  actionRetakeBtn: {
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 24,
+    backgroundColor: "rgba(20, 22, 32, 0.85)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.2)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  actionRetakeText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+
+  actionStoryBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderRadius: 24,
+    backgroundColor: "#1E202B",
+    borderWidth: 1,
+    borderColor: "rgba(255, 252, 0, 0.4)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  actionStoryText: {
+    color: "#FFFC00",
+    fontSize: 14,
+    fontWeight: "800",
+    letterSpacing: 0.3,
+  },
+
+  actionFeedBtn: {
+    flex: 1.2,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    borderRadius: 24,
+    backgroundColor: "#FFFC00",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#FFFC00",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+
+  actionFeedText: {
+    color: "#0A0B10",
+    fontSize: 14,
+    fontWeight: "900",
+    letterSpacing: 0.3,
+  },
+
+  actionDisabled: {
+    opacity: 0.6,
   },
 
   // =========================
