@@ -1,5 +1,6 @@
 const express = require("express");
 const multer = require("multer");
+const jwt = require("jsonwebtoken");
 const cloudinary = require("cloudinary").v2;
 const Photo = require("../models/Photo");
 const authMiddleware = require("../middleware/authMiddleware");
@@ -14,6 +15,17 @@ const upload = multer({
 // GET /api/photos - Fetch all photos for feed
 router.get("/", async (req, res) => {
   try {
+    let currentUserId = null;
+    if (req.headers.authorization) {
+      try {
+        const token = req.headers.authorization.split(" ")[1];
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        currentUserId = decoded.id;
+      } catch (err) {
+        // Continue unauthenticated if token invalid
+      }
+    }
+
     const photos = await Photo.find()
       .populate("user", "username avatarUrl")
       .sort({ createdAt: -1 });
@@ -26,6 +38,10 @@ router.get("/", async (req, res) => {
         ? p.likes
         : 0;
 
+      const isLikedByMe = currentUserId
+        ? likesArray.some((id) => id.toString() === currentUserId.toString())
+        : false;
+
       return {
         _id: p._id,
         id: p._id,
@@ -36,7 +52,7 @@ router.get("/", async (req, res) => {
         caption: p.caption || "",
         filter: p.filter || "normal",
         likes: likesCount,
-        likedBy: likesArray,
+        isLikedByMe,
         createdAt: p.createdAt,
       };
     });

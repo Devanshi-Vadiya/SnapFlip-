@@ -17,7 +17,8 @@ import {
 } from "react-native";
 
 import { router } from "expo-router";
-import { API_URL } from "./api";
+import { API_URL } from "../api/api";
+import { getAuthToken } from "../api/authStorage";
 
 type Post = {
   id: string;
@@ -25,6 +26,9 @@ type Post = {
   image: string;
   caption: string;
   likes: number;
+  isLikedByMe?: boolean;
+  avatarUrl?: string;
+  createdAt?: string;
 };
 
 export default function FeedScreen() {
@@ -50,6 +54,9 @@ export default function FeedScreen() {
     new Animated.Value(0)
   ).current;
 
+  const [imageRatios, setImageRatios] = useState<
+    Record<string, number>
+  >({});
   // =========================
   // FETCH REAL PHOTOS
   // =========================
@@ -59,32 +66,53 @@ export default function FeedScreen() {
       setLoading(true);
       setError("");
 
-      const response = await fetch(
-        `${API_URL}/api/photos`
-      );
+      const token = await getAuthToken();
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
 
+      const response = await fetch(`${API_URL}/api/photos`, { headers });
       const data = await response.json();
 
-      console.log("PHOTOS FROM API:", data);
-      console.log("IMAGE URL:", data[0]?.imageUrl);
       if (!response.ok) {
         throw new Error(
           data.message || "Failed to load feed"
         );
       }
 
-      const formattedPosts: Post[] = data.map(
-        (photo: any) => ({
-          id: photo._id,
-          username: photo.username,
-          image: photo.imageUrl,
-          caption: photo.caption || "",
-          likes: photo.likes || 0,
-        })
-      );
+      const formattedPosts: Post[] = data.map((photo: any) => ({
+        id: photo._id || photo.id,
+        username: photo.username,
+        image: photo.imageUrl,
+        caption: photo.caption || "",
+        likes: typeof photo.likes === "number" ? photo.likes : 0,
+        isLikedByMe: Boolean(photo.isLikedByMe),
+        avatarUrl: photo.avatarUrl || "",
+        createdAt: photo.createdAt,
+      }));
 
       setPosts(formattedPosts);
 
+      const initialLiked = formattedPosts
+        .filter((p) => p.isLikedByMe)
+        .map((p) => p.id);
+      setLikedPosts(initialLiked);
+
+      formattedPosts.forEach((post) => {
+        Image.getSize(
+          post.image,
+          (width, height) => {
+            setImageRatios((prev) => ({
+              ...prev,
+              [post.id]: height / width,
+            }));
+          },
+          (error) => {
+            console.log("Image size error:", error);
+          }
+        );
+      });
       const initialLikes: Record<string, number> = {};
 
       formattedPosts.forEach((post) => {
@@ -129,36 +157,69 @@ export default function FeedScreen() {
   ).current;
 
   // =========================
-  // LIKE POST
+  // LIKE / UNLIKE POST
   // =========================
-
   const likePost = async (postId: string) => {
-  if (likedPosts.includes(postId)) return;
-
-  try {
-    const response = await fetch(
-      `${API_URL}/api/photos/${postId}/like`,
-      {
-        method: "POST",
-      }
-    );
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.message || "Failed to like photo");
+    const token = await getAuthToken();
+    if (!token) {
+      alert("Please log in to like snaps");
+      router.push("/login");
+      return;
     }
 
-    setLikedPosts((prev) => [...prev, postId]);
+    const wasLiked = likedPosts.includes(postId);
+    const currentCount = likeCounts[postId] || 0;
 
+    // Optimistic toggle
+    setLikedPosts((prev) =>
+      wasLiked ? prev.filter((id) => id !== postId) : [...prev, postId]
+    );
     setLikeCounts((prev) => ({
       ...prev,
-      [postId]: data.likes,
+      [postId]: wasLiked ? Math.max(0, currentCount - 1) : currentCount + 1,
     }));
-  } catch (error) {
-    console.log("Like error:", error);
-  }
-};
+
+    try {
+      const response = await fetch(
+        `${API_URL}/api/photos/${postId}/like`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to update like");
+      }
+
+      // Synchronize with server truth
+      setLikeCounts((prev) => ({
+        ...prev,
+        [postId]: typeof data.likes === "number" ? data.likes : currentCount,
+      }));
+
+      if (data.isLiked) {
+        setLikedPosts((prev) => (prev.includes(postId) ? prev : [...prev, postId]));
+      } else {
+        setLikedPosts((prev) => prev.filter((id) => id !== postId));
+      }
+    } catch (error) {
+      console.error("LIKE ERROR:", error);
+      // Revert optimistic update on failure
+      setLikedPosts((prev) =>
+        wasLiked ? (prev.includes(postId) ? prev : [...prev, postId]) : prev.filter((id) => id !== postId)
+      );
+      setLikeCounts((prev) => ({
+        ...prev,
+        [postId]: currentCount,
+      }));
+    }
+  };
 
   // =========================
   // DOUBLE TAP
@@ -244,22 +305,15 @@ export default function FeedScreen() {
           }
         >
           <Image
-  source={{ uri: item.image }}
-  style={styles.postImage}
-  resizeMode="cover"
-  onError={(error) => {
-    console.log(
-      "IMAGE LOAD ERROR:",
-      error.nativeEvent.error
-    );
-  }}
-  onLoad={() => {
-    console.log(
-      "IMAGE LOADED:",
-      item.image
-    );
-  }}
-/>
+            source={{ uri: item.image }}
+            style={[
+              styles.postImage,
+              imageRatios[item.id]
+                ? { aspectRatio: 1 / imageRatios[item.id] }
+                : null,
+            ]}
+            resizeMode="contain"
+          />
 
           {/* DOUBLE TAP HEART */}
 
@@ -583,10 +637,9 @@ const styles = StyleSheet.create({
   // =========================
 
   postImage: {
-  width: "100%",
-  height: 420,
-  backgroundColor: "#ddd",
-},
+    width: "100%",
+    backgroundColor: "#000",
+  },
 
   // =========================
   // HEART OVERLAY
