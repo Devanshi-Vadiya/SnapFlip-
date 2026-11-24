@@ -25,6 +25,9 @@ export default function CameraScreen() {
 
   const [photo, setPhoto] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [facing, setFacing] = useState<"back" | "front">("back");
+  const [flash, setFlash] = useState<"off" | "on">("off");
+  const [caption, setCaption] = useState("");
 
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -200,7 +203,7 @@ export default function CameraScreen() {
         type: "image/jpeg",
       } as any);
 
-      formData.append("caption", "My SnapFilter photo");
+      formData.append("caption", caption.trim() || "My SnapFlip snap");
       formData.append("filter", filter);
 
       const token = await SecureStore.getItemAsync("token");
@@ -321,6 +324,20 @@ export default function CameraScreen() {
         </View>
 
         {/* =========================
+            CAPTION INPUT
+            ========================= */}
+        <View style={styles.captionInputContainer}>
+          <TextInput
+            style={styles.captionInput}
+            placeholder="Add a caption..."
+            placeholderTextColor="#AAA"
+            value={caption}
+            onChangeText={setCaption}
+            maxLength={140}
+          />
+        </View>
+
+        {/* =========================
             RETAKE + UPLOAD
             ========================= */}
 
@@ -364,9 +381,33 @@ export default function CameraScreen() {
 
       <CameraView
         ref={cameraRef}
-        style={StyleSheet.absoluteFillObject}
-        facing="back"
+        style={StyleSheet.absoluteFill}
+        facing={facing}
+        enableTorch={flash === "on"}
       />
+
+      {/* TOP CONTROLS: FLIP & FLASH */}
+      <View style={styles.topControls}>
+        <TouchableOpacity
+          style={styles.controlPill}
+          onPress={() => setFacing(facing === "back" ? "front" : "back")}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.controlPillText}>
+            🔄 {facing === "back" ? "Front" : "Back"}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.controlPill}
+          onPress={() => setFlash(flash === "off" ? "on" : "off")}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.controlPillText}>
+            ⚡ {flash === "on" ? "ON" : "OFF"}
+          </Text>
+        </TouchableOpacity>
+      </View>
 
       {/* =========================
           FILTER OVERLAYS
@@ -863,26 +904,26 @@ const styles = StyleSheet.create({
   // =========================
 
   warmFilter: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
 
     backgroundColor:
       "rgba(255, 180, 80, 0.25)",
   },
   
   coolFilter: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
 
     backgroundColor:
       "rgba(80, 150, 255, 0.20)",
   },
 
   bwFilter: {
-  ...StyleSheet.absoluteFillObject,
-  backgroundColor: "rgba(0, 0, 0, 0.75)",
-},
+    ...StyleSheet.absoluteFill,
+    backgroundColor: "rgba(0, 0, 0, 0.75)",
+  },
 
   vintageFilter: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
 
     backgroundColor:
       "rgba(180, 120, 60, 0.25)",
@@ -1013,5 +1054,47 @@ const styles = StyleSheet.create({
 
   permissionText: {
     fontSize: 18,
+  },
+
+  captionInputContainer: {
+    position: "absolute",
+    bottom: 120,
+    left: 20,
+    right: 20,
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.2)",
+  },
+
+  captionInput: {
+    color: "#FFFFFF",
+    fontSize: 16,
+  },
+
+  topControls: {
+    position: "absolute",
+    top: 48,
+    left: 16,
+    flexDirection: "row",
+    gap: 10,
+    zIndex: 20,
+  },
+
+  controlPill: {
+    backgroundColor: "rgba(0, 0, 0, 0.55)",
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.35)",
+  },
+
+  controlPillText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "bold",
   },
 });

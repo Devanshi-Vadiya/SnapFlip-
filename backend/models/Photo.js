@@ -2,24 +2,44 @@ const mongoose = require("mongoose");
 
 const photoSchema = new mongoose.Schema(
   {
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
+    username: {
+      type: String,
+      required: true,
+      index: true,
+    },
+    avatarUrl: {
+      type: String,
+      default: "",
+    },
     imageUrl: {
       type: String,
       required: true,
     },
-
-    username: {
+    cloudinaryPublicId: {
       type: String,
       required: true,
     },
-
     caption: {
       type: String,
       default: "",
+      maxlength: 300,
     },
-    likes: {
-      type: Number,
-      default: 0,
+    filter: {
+      type: String,
+      default: "normal",
     },
+    likes: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
   },
   {
     timestamps: true,
