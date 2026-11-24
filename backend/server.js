@@ -9,6 +9,8 @@ const authRoutes = require("./routes/auth");
 const photoRoutes = require("./routes/photos");
 const commentRoutes = require("./routes/comments");
 const storyRoutes = require("./routes/stories");
+const userRoutes = require("./routes/users");
+const chatRoutes = require("./routes/chat");
 
 // Middleware
 app.use(cors());
@@ -27,6 +29,8 @@ app.use("/api/auth", authRoutes);
 app.use("/api/photos", photoRoutes);
 app.use("/api/comments", commentRoutes);
 app.use("/api/stories", storyRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/chat", chatRoutes);
 
 app.get("/", (req, res) => {
   res.json({
