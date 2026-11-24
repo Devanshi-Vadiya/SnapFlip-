@@ -3,6 +3,7 @@ const multer = require("multer");
 const jwt = require("jsonwebtoken");
 const cloudinary = require("cloudinary").v2;
 const Photo = require("../models/Photo");
+const Comment = require("../models/Comment");
 const authMiddleware = require("../middleware/authMiddleware");
 
 const router = express.Router();
@@ -45,6 +46,7 @@ router.get("/", async (req, res) => {
       return {
         _id: p._id,
         id: p._id,
+        userId: p.user ? (p.user._id || p.user) : null,
         imageUrl: p.imageUrl,
         cloudinaryPublicId: p.cloudinaryPublicId,
         username: p.username || (p.user && p.user.username) || "user",
@@ -188,6 +190,51 @@ router.post("/:id/like", authMiddleware, async (req, res) => {
     console.error("Like error:", error);
     res.status(500).json({
       message: "Failed to update like status",
+    });
+  }
+});
+
+// DELETE /api/photos/:id - Delete own photo and cleanup Cloudinary
+router.delete("/:id", authMiddleware, async (req, res) => {
+  try {
+    const photo = await Photo.findById(req.params.id);
+
+    if (!photo) {
+      return res.status(404).json({
+        message: "Photo not found",
+      });
+    }
+
+    // Verify ownership
+    if (photo.user && photo.user.toString() !== req.user.id.toString()) {
+      return res.status(403).json({
+        message: "You can only delete your own photos",
+      });
+    }
+
+    // Delete image from Cloudinary if public_id exists
+    if (photo.cloudinaryPublicId) {
+      try {
+        await cloudinary.uploader.destroy(photo.cloudinaryPublicId);
+      } catch (cloudErr) {
+        console.error("Cloudinary asset deletion error:", cloudErr);
+      }
+    }
+
+    // Delete associated comments
+    await Comment.deleteMany({ photo: photo._id });
+
+    // Delete photo record
+    await Photo.findByIdAndDelete(req.params.id);
+
+    res.status(200).json({
+      message: "Photo deleted successfully",
+      id: req.params.id,
+    });
+  } catch (error) {
+    console.error("Delete photo error:", error);
+    res.status(500).json({
+      message: "Failed to delete photo",
     });
   }
 });

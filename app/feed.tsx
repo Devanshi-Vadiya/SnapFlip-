@@ -18,14 +18,16 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from "react-native";
 
 import { router } from "expo-router";
 import { API_URL } from "../api/api";
-import { getAuthToken } from "../api/authStorage";
+import { getAuthToken, getStoredUser, AuthUser } from "../api/authStorage";
 
 type Post = {
   id: string;
+  userId?: string;
   username: string;
   image: string;
   caption: string;
@@ -71,12 +73,51 @@ export default function FeedScreen() {
   >({});
 
   // Comments state
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [commentModalVisible, setCommentModalVisible] = useState(false);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [comments, setComments] = useState<CommentItem[]>([]);
   const [newCommentText, setNewCommentText] = useState("");
   const [submittingComment, setSubmittingComment] = useState(false);
   const [loadingComments, setLoadingComments] = useState(false);
+
+  const deletePost = (postId: string) => {
+    Alert.alert(
+      "Delete Snap",
+      "Are you sure you want to delete this snap? This cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            const token = await getAuthToken();
+            if (!token) return;
+
+            try {
+              const res = await fetch(`${API_URL}/api/photos/${postId}`, {
+                method: "DELETE",
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              });
+
+              if (res.ok) {
+                setPosts((prev) => prev.filter((p) => p.id !== postId));
+                alert("Snap deleted successfully");
+              } else {
+                const data = await res.json();
+                alert(data.message || "Failed to delete snap");
+              }
+            } catch (err) {
+              console.error("Delete error:", err);
+              alert("Network error deleting snap");
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const openComments = async (post: Post) => {
     setSelectedPost(post);
@@ -158,6 +199,7 @@ export default function FeedScreen() {
 
       const formattedPosts: Post[] = data.map((photo: any) => ({
         id: photo._id || photo.id,
+        userId: photo.userId,
         username: photo.username,
         image: photo.imageUrl,
         caption: photo.caption || "",
@@ -207,6 +249,7 @@ export default function FeedScreen() {
   };
 
   useEffect(() => {
+    getStoredUser().then((user) => setCurrentUser(user));
     fetchPosts();
   }, []);
 
@@ -358,17 +401,31 @@ export default function FeedScreen() {
         {/* USER HEADER */}
 
         <View style={styles.header}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {item.username
-                .charAt(0)
-                .toUpperCase()}
+          <View style={styles.userInfoLeft}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>
+                {item.username
+                  .charAt(0)
+                  .toUpperCase()}
+              </Text>
+            </View>
+
+            <Text style={styles.username}>
+              {item.username}
             </Text>
           </View>
 
-          <Text style={styles.username}>
-            {item.username}
-          </Text>
+          {currentUser &&
+            (currentUser.username === item.username ||
+              currentUser.id === item.userId) && (
+              <TouchableOpacity
+                onPress={() => deletePost(item.id)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                style={styles.deleteBtn}
+              >
+                <Text style={styles.deleteIcon}>🗑️</Text>
+              </TouchableOpacity>
+            )}
         </View>
 
         {/* PHOTO */}
@@ -750,7 +807,21 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     padding: 12,
+  },
+
+  userInfoLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+
+  deleteBtn: {
+    padding: 6,
+  },
+
+  deleteIcon: {
+    fontSize: 18,
   },
 
   avatar: {
