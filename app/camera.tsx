@@ -3,7 +3,6 @@ import { captureRef } from "react-native-view-shot";
 import * as Location from "expo-location";
 import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { useIsFocused } from "@react-navigation/native";
 import { API_URL } from "../api/api";
 
 import {
@@ -24,7 +23,6 @@ import { clearAuthSession } from "../api/authStorage";
 import BottomNavBar from "../components/BottomNavBar";
 
 export default function CameraScreen() {
-  const isFocused = useIsFocused();
   const [permission, requestPermission] = useCameraPermissions();
   const [cameraReady, setCameraReady] = useState(false);
   const [cameraMode, setCameraMode] = useState<"feed" | "story">("feed");
@@ -507,18 +505,14 @@ export default function CameraScreen() {
           CAMERA VIEW
           ========================= */}
 
-      {isFocused ? (
-        <CameraView
-          key={facing}
-          ref={cameraRef}
-          style={styles.cameraView}
-          facing={facing}
-          enableTorch={flash === "on"}
-          onCameraReady={() => setCameraReady(true)}
-        />
-      ) : (
-        <View style={styles.cameraView} />
-      )}
+      <CameraView
+        key={facing}
+        ref={cameraRef}
+        style={styles.cameraView}
+        facing={facing}
+        enableTorch={flash === "on"}
+        onCameraReady={() => setCameraReady(true)}
+      />
 
       {/* TOP CONTROLS: FLIP, FLASH & STORIES TRAY */}
       <View style={styles.topControls}>
