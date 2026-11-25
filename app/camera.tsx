@@ -44,7 +44,7 @@ export default function CameraScreen() {
   const [text, setText] = useState("");
 
   const cameraRef = useRef<CameraView>(null);
-  const previewRef = useRef<View>(null);
+  const previewRef = useRef<any>(null);
 
   // =========================
   // SWIPE NAVIGATION

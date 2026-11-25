@@ -151,7 +151,7 @@ export default function StoryViewer({
 
   return (
     <Modal visible={visible} animationType="fade" transparent={false} onRequestClose={onClose}>
-      <StatusBar barStyle="light-content" backgroundColor="#000000" />
+      <StatusBar barStyle="light-content" />
       <View style={styles.container}>
         {/* BACKGROUND IMAGE */}
         <Image
