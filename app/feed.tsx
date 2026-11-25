@@ -551,14 +551,20 @@ export default function FeedScreen() {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator
-          size="large"
-        />
-
-        <Text style={styles.loadingText}>
-          Loading feed...
-        </Text>
+      <View style={styles.container}>
+        <View style={styles.feedHeader}>
+          <View style={styles.feedHeaderLeft}>
+            <View style={styles.logoBadgeSmall}>
+              <Text style={styles.logoIconSmall}>📸</Text>
+            </View>
+            <Text style={styles.title}>SnapFlip</Text>
+          </View>
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#FFFC00" />
+          <Text style={styles.loadingText}>Loading feed & stories...</Text>
+        </View>
+        <BottomNavBar activeRoute="feed" />
       </View>
     );
   }
@@ -569,19 +575,22 @@ export default function FeedScreen() {
 
   if (error) {
     return (
-      <View style={styles.loadingContainer}>
-        <Text style={styles.errorText}>
-          {error}
-        </Text>
-
-        <TouchableOpacity
-          style={styles.retryButton}
-          onPress={fetchPosts}
-        >
-          <Text style={styles.retryText}>
-            Try Again
-          </Text>
-        </TouchableOpacity>
+      <View style={styles.container}>
+        <View style={styles.feedHeader}>
+          <View style={styles.feedHeaderLeft}>
+            <View style={styles.logoBadgeSmall}>
+              <Text style={styles.logoIconSmall}>📸</Text>
+            </View>
+            <Text style={styles.title}>SnapFlip</Text>
+          </View>
+        </View>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={fetchPosts}>
+            <Text style={styles.retryText}>Try Again</Text>
+          </TouchableOpacity>
+        </View>
+        <BottomNavBar activeRoute="feed" />
       </View>
     );
   }

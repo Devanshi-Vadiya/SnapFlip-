@@ -3,6 +3,7 @@ import { captureRef } from "react-native-view-shot";
 import * as Location from "expo-location";
 import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
+import { useIsFocused } from "@react-navigation/native";
 import { API_URL } from "../api/api";
 
 import {
@@ -23,7 +24,10 @@ import { clearAuthSession } from "../api/authStorage";
 import BottomNavBar from "../components/BottomNavBar";
 
 export default function CameraScreen() {
+  const isFocused = useIsFocused();
   const [permission, requestPermission] = useCameraPermissions();
+  const [cameraReady, setCameraReady] = useState(false);
+  const [cameraMode, setCameraMode] = useState<"feed" | "story">("feed");
 
   const [photo, setPhoto] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -165,6 +169,67 @@ export default function CameraScreen() {
   };
 
   // =========================
+  // NATIVE MULTIPART UPLOADER
+  // (Uses XMLHttpRequest to bypass Expo fetch FormDataPart issue)
+  // =========================
+  const uploadMultipart = (
+    url: string,
+    token: string,
+    fileUri: string,
+    fileName: string,
+    fields: Record<string, string>
+  ): Promise<{ ok: boolean; status: number; data: any }> => {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", url);
+      if (token) {
+        xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+      }
+      xhr.setRequestHeader("Accept", "application/json");
+
+      xhr.onload = () => {
+        try {
+          const data = JSON.parse(xhr.responseText);
+          resolve({
+            ok: xhr.status >= 200 && xhr.status < 300,
+            status: xhr.status,
+            data,
+          });
+        } catch {
+          resolve({
+            ok: xhr.status >= 200 && xhr.status < 300,
+            status: xhr.status,
+            data: {
+              message:
+                xhr.responseText || `Upload finished with status ${xhr.status}`,
+            },
+          });
+        }
+      };
+
+      xhr.onerror = (err) => {
+        console.error("XHR network error:", err);
+        reject(
+          new Error("Network connection error during upload. Please try again.")
+        );
+      };
+
+      const formData = new FormData();
+      formData.append("image", {
+        uri: fileUri,
+        name: fileName,
+        type: "image/jpeg",
+      } as any);
+
+      for (const [key, val] of Object.entries(fields)) {
+        formData.append(key, val);
+      }
+
+      xhr.send(formData);
+    });
+  };
+
+  // =========================
   // UPLOAD PHOTO
   // =========================
   const uploadPhoto = async () => {
@@ -197,44 +262,31 @@ export default function CameraScreen() {
         console.log("CAPTURED IMAGE:", uploadUri);
       }
 
-      const formData = new FormData();
-
-      formData.append("image", {
-        uri: uploadUri,
-        name: "snapfilter-photo.jpg",
-        type: "image/jpeg",
-      } as any);
-
-      formData.append("caption", caption.trim() || "My SnapFlip snap");
-      formData.append("filter", filter);
-
       const token = await SecureStore.getItemAsync("token");
 
-      const response = await fetch(
+      const res = await uploadMultipart(
         `${API_URL}/api/photos/upload`,
+        token || "",
+        uploadUri,
+        "snapfilter-photo.jpg",
         {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          body: formData,
+          caption: caption.trim() || "My SnapFlip snap",
+          filter,
         }
       );
 
-      const data = await response.json();
-
-      if (response.ok) {
+      if (res.ok) {
         alert("Photo uploaded successfully ☁️");
-        console.log("Uploaded photo:", data);
+        console.log("Uploaded photo:", res.data);
         setPhoto(null);
         setCaption("");
         router.push("/feed");
       } else {
-        alert(data.message || "Upload failed");
+        alert(res.data?.message || "Upload failed");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.log("Upload error:", error);
-      alert(`Upload error: ${error}`);
+      alert(error?.message || `Upload error: ${error}`);
     } finally {
       setUploading(false);
     }
@@ -264,38 +316,30 @@ export default function CameraScreen() {
         }
       }
 
-      const formData = new FormData();
-      formData.append("image", {
-        uri: uploadUri,
-        name: "snapflip-story.jpg",
-        type: "image/jpeg",
-      } as any);
-
-      formData.append("caption", caption.trim() || "");
-      formData.append("filter", filter);
-
       const token = await SecureStore.getItemAsync("token");
 
-      const response = await fetch(`${API_URL}/api/stories/upload`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
+      const res = await uploadMultipart(
+        `${API_URL}/api/stories/upload`,
+        token || "",
+        uploadUri,
+        "snapflip-story.jpg",
+        {
+          caption: caption.trim() || "",
+          filter,
+        }
+      );
 
-      const data = await response.json();
-      if (response.ok) {
+      if (res.ok) {
         alert("Posted to Story! 🌟 Active for 24 hours.");
         setPhoto(null);
         setCaption("");
         router.push("/feed");
       } else {
-        alert(data.message || "Failed to post story");
+        alert(res.data?.message || "Failed to post story");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Story upload error:", error);
-      alert(`Story error: ${error}`);
+      alert(error?.message || `Story error: ${error}`);
     } finally {
       setUploading(false);
     }
@@ -460,17 +504,23 @@ export default function CameraScreen() {
     >
 
       {/* =========================
-          CAMERA
+          CAMERA VIEW
           ========================= */}
 
-      <CameraView
-        ref={cameraRef}
-        style={StyleSheet.absoluteFill}
-        facing={facing}
-        enableTorch={flash === "on"}
-      />
+      {isFocused ? (
+        <CameraView
+          key={facing}
+          ref={cameraRef}
+          style={styles.cameraView}
+          facing={facing}
+          enableTorch={flash === "on"}
+          onCameraReady={() => setCameraReady(true)}
+        />
+      ) : (
+        <View style={styles.cameraView} />
+      )}
 
-      {/* TOP CONTROLS: FLIP & FLASH */}
+      {/* TOP CONTROLS: FLIP, FLASH & STORIES TRAY */}
       <View style={styles.topControls}>
         <TouchableOpacity
           style={styles.controlPill}
@@ -489,6 +539,16 @@ export default function CameraScreen() {
         >
           <Text style={styles.controlPillText}>
             ⚡ {flash === "on" ? "ON" : "OFF"}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.controlPill, styles.storyPill]}
+          onPress={() => router.push("/feed")}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.storyPillText}>
+            🌟 Stories Tray
           </Text>
         </TouchableOpacity>
       </View>
@@ -731,11 +791,52 @@ export default function CameraScreen() {
         </View>
 
         {/* =========================
+            DESTINATION MODE SELECTOR
+            ========================= */}
+        <View style={styles.modeSelector}>
+          <TouchableOpacity
+            style={[
+              styles.modeTab,
+              cameraMode === "feed" && styles.modeTabActive,
+            ]}
+            onPress={() => setCameraMode("feed")}
+            activeOpacity={0.8}
+          >
+            <Text
+              style={[
+                styles.modeTabText,
+                cameraMode === "feed" && styles.modeTabTextActive,
+              ]}
+            >
+              ⚡ Snap Feed
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.modeTab,
+              cameraMode === "story" && styles.modeTabActiveStory,
+            ]}
+            onPress={() => setCameraMode("story")}
+            activeOpacity={0.8}
+          >
+            <Text
+              style={[
+                styles.modeTabText,
+                cameraMode === "story" && styles.modeTabTextActiveStory,
+              ]}
+            >
+              🌟 24h Story
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* =========================
             SWIPE HINT
             ========================= */}
 
         <Text style={styles.swipeHint}>
-          Swipe left for Feed →
+          Swipe left for Feed & Stories →
         </Text>
 
         {/* =========================
@@ -743,13 +844,21 @@ export default function CameraScreen() {
             ========================= */}
 
         <TouchableOpacity
-          style={styles.cameraButton}
+          style={[
+            styles.cameraButton,
+            cameraMode === "story" && styles.cameraButtonStory,
+          ]}
           onPress={takePicture}
           activeOpacity={0.7}
         >
-          <View style={styles.cameraButtonInner}>
+          <View
+            style={[
+              styles.cameraButtonInner,
+              cameraMode === "story" && styles.cameraButtonInnerStory,
+            ]}
+          >
             <Text style={styles.cameraIcon}>
-              📷
+              {cameraMode === "story" ? "🌟" : "📷"}
             </Text>
           </View>
         </TouchableOpacity>
@@ -1240,5 +1349,84 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 13,
     fontWeight: "bold",
+  },
+
+  cameraView: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: "100%",
+    height: "100%",
+    zIndex: 1,
+  },
+
+  storyPill: {
+    backgroundColor: "rgba(255, 252, 0, 0.15)",
+    borderColor: "#FFFC00",
+  },
+
+  storyPillText: {
+    color: "#FFFC00",
+    fontWeight: "bold",
+    fontSize: 13,
+  },
+
+  modeSelector: {
+    flexDirection: "row",
+    backgroundColor: "rgba(0, 0, 0, 0.65)",
+    borderRadius: 22,
+    padding: 3,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.25)",
+  },
+
+  modeTab: {
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: 18,
+  },
+
+  modeTabActive: {
+    backgroundColor: "rgba(255, 255, 255, 0.22)",
+  },
+
+  modeTabActiveStory: {
+    backgroundColor: "#FFFC00",
+  },
+
+  modeTabText: {
+    color: "#9EA2B4",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+
+  modeTabTextActive: {
+    color: "#FFFFFF",
+  },
+
+  modeTabTextActiveStory: {
+    color: "#0A0B10",
+  },
+
+  cameraButtonStory: {
+    borderColor: "#FFFC00",
+    backgroundColor: "rgba(255, 252, 0, 0.22)",
+  },
+
+  cameraButtonInnerStory: {
+    backgroundColor: "rgba(255, 252, 0, 0.45)",
+  },
+
+  actionStoryBtnActive: {
+    backgroundColor: "#FFFC00",
+    borderColor: "#FFFC00",
+  },
+
+  actionFeedBtnActive: {
+    shadowColor: "#FFFC00",
+    shadowOpacity: 0.5,
   },
 });

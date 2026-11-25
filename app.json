@@ -8,7 +8,11 @@
     "scheme": "camproj",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Allow SnapFlip to access your camera to capture snaps and stories.",
+        "NSMicrophoneUsageDescription": "Allow SnapFlip to access your microphone for recording."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -17,6 +21,10 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ],
       "predictiveBackGestureEnabled": false,
       "package": "com.devanshivadiya.camproj"
     },
@@ -26,6 +34,19 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow SnapFlip to access your camera to capture snaps and stories.",
+          "microphonePermission": "Allow SnapFlip to access your microphone for recording."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow SnapFlip to access your location to add location filter stamps to your snaps."
+        }
+      ],
       [
         "expo-splash-screen",
         {
