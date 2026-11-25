@@ -224,12 +224,15 @@ export default function FeedScreen() {
       // Fetch active 24h stories
       try {
         const storiesRes = await fetch(`${API_URL}/api/stories/feed`, { headers });
-        const storiesData = await storiesRes.json();
-        if (storiesRes.ok && Array.isArray(storiesData)) {
-          setStoryGroups(storiesData);
+        const contentType = storiesRes.headers.get("content-type");
+        if (storiesRes.ok && contentType && contentType.includes("application/json")) {
+          const storiesData = await storiesRes.json();
+          if (Array.isArray(storiesData)) {
+            setStoryGroups(storiesData);
+          }
         }
       } catch (sErr) {
-        console.error("Stories fetch error:", sErr);
+        // Silently handle if backend is spinning up or route not yet deployed
       }
 
       const initialLiked = formattedPosts

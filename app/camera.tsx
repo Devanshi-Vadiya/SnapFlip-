@@ -10,6 +10,7 @@ import {
   Button,
   Image,
   PanResponder,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -516,25 +517,27 @@ export default function CameraScreen() {
 
       {/* TOP CONTROLS: FLIP, FLASH & STORIES TRAY */}
       <View style={styles.topControls}>
-        <TouchableOpacity
-          style={styles.controlPill}
-          onPress={() => setFacing(facing === "back" ? "front" : "back")}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.controlPillText}>
-            🔄 {facing === "back" ? "Front" : "Back"}
-          </Text>
-        </TouchableOpacity>
+        <View style={styles.topControlsLeft}>
+          <TouchableOpacity
+            style={styles.controlPill}
+            onPress={() => setFacing(facing === "back" ? "front" : "back")}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.controlPillText}>
+              🔄 {facing === "back" ? "Front" : "Back"}
+            </Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.controlPill}
-          onPress={() => setFlash(flash === "off" ? "on" : "off")}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.controlPillText}>
-            ⚡ {flash === "on" ? "ON" : "OFF"}
-          </Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.controlPill}
+            onPress={() => setFlash(flash === "off" ? "on" : "off")}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.controlPillText}>
+              ⚡ {flash === "on" ? "ON" : "OFF"}
+            </Text>
+          </TouchableOpacity>
+        </View>
 
         <TouchableOpacity
           style={[styles.controlPill, styles.storyPill]}
@@ -628,20 +631,6 @@ export default function CameraScreen() {
           />
         </View>
       )}
-
-      {/* =========================
-          LOGOUT
-          ========================= */}
-
-      <TouchableOpacity
-        style={styles.logoutButton}
-        onPress={handleLogout}
-        activeOpacity={0.8}
-      >
-        <Text style={styles.logoutText}>
-          Logout
-        </Text>
-      </TouchableOpacity>
 
       {/* =========================
           BOTTOM CONTROLS
@@ -928,51 +917,17 @@ const styles = StyleSheet.create({
   },
 
   // =========================
-  // LOGOUT
-  // =========================
-
-  logoutButton: {
-    position: "absolute",
-
-    top: 48,
-    right: 16,
-
-    zIndex: 20,
-
-    backgroundColor:
-      "rgba(0, 0, 0, 0.55)",
-
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-
-    borderRadius: 20,
-
-    borderWidth: 1,
-
-    borderColor:
-      "rgba(255, 255, 255, 0.35)",
-  },
-
-  logoutText: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "700",
-  },
-
-  // =========================
   // BOTTOM CONTROLS
   // =========================
 
   bottomControls: {
     position: "absolute",
-
     left: 0,
     right: 0,
-    bottom: 20,
-
+    bottom: Platform.OS === "ios" ? 92 : 72,
     alignItems: "center",
-
     paddingHorizontal: 14,
+    zIndex: 25,
   },
 
   // =========================
@@ -1323,11 +1278,19 @@ const styles = StyleSheet.create({
 
   topControls: {
     position: "absolute",
-    top: 48,
-    left: 16,
+    top: Platform.OS === "ios" ? 54 : 44,
+    left: 14,
+    right: 14,
     flexDirection: "row",
-    gap: 10,
-    zIndex: 20,
+    justifyContent: "space-between",
+    alignItems: "center",
+    zIndex: 30,
+  },
+
+  topControlsLeft: {
+    flexDirection: "row",
+    gap: 8,
+    alignItems: "center",
   },
 
   controlPill: {
